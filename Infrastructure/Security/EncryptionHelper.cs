@@ -26,7 +26,7 @@ namespace Infrastructure.Security
             var cipherBytes = Convert.FromBase64String(cipherText);
             using var aes = Aes.Create();
             aes.Key = _key!;
-            aes.IV = new byte[16]; // fixed IV = zeros
+            aes.IV = _fixedIv; // phải dùng cùng IV với lúc encrypt
             aes.Mode = CipherMode.CBC;
             aes.Padding = PaddingMode.PKCS7;
 

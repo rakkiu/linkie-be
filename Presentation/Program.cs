@@ -3,6 +3,7 @@ using Infrastructure.Security;
 using Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Presentation.Extentions;
+using Presentation.Extentions;
 using Presentation.Middlewares;
 
 namespace Presentation
@@ -29,9 +30,7 @@ namespace Presentation
             });
 
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerWithJwt();
 
             var app = builder.Build();
 

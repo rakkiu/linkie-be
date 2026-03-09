@@ -4,7 +4,7 @@ namespace Application.Interfaces
 {
     public interface IJwtService
     {
-        string GenerateAccessToken(Guid userId, string email, string? fullName = null);
+        string GenerateAccessToken(Guid userId, string email, string? fullName = null, string? role = null);
 
         /// <summary>
         /// Generates the refresh token.

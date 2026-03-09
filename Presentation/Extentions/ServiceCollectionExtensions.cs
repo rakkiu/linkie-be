@@ -37,11 +37,16 @@ namespace Presentation.Extentions
             // Register repositories
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IJwtTokenRepository, JwtTokenRepository>();
+            services.AddScoped<IEventRepository, EventRepository>();
+            services.AddScoped<IWishwallRepository, WishwallRepository>();
+            services.AddScoped<IArFrameRepository, ArFrameRepository>();
+            services.AddScoped<IAdminRepository, AdminRepository>();
 
             // Register services
             services.Configure<JwtSettings>(config.GetSection("JwtSettings")); // Configure JwtSettings
             services.AddScoped<IJwtService, JwtService>(); // Register JwtService
             services.AddScoped<IEmailService, EmailService>(); // Register EmailService
+            services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
 
             // 🔹 MediatR
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly));

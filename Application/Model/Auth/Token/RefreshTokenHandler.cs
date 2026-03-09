@@ -100,7 +100,7 @@ namespace Application.Model.Auth.Token
                 return new LoginResponseDto();
             }
 
-            var newAccessToken = _jwtService.GenerateAccessToken(user.Id, user.Email, user.Name);
+            var newAccessToken = _jwtService.GenerateAccessToken(user.Id, user.Email, user.Name, user.Role.ToString());
             var newRefreshToken = _jwtService.GenerateRefreshToken();
 
             if (!string.IsNullOrWhiteSpace(request.token.AccessToken))

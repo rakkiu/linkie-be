@@ -12,6 +12,9 @@ namespace Infrastructure.Repositories
 
         public UserRepository(ApplicationDbContext db) => _db = db;
 
+        public async Task AddAsync(User user, CancellationToken ct = default)
+            => await _db.Users.AddAsync(user, ct);
+
         public async Task<User?> GetByEmailAsync(string email, CancellationToken ct = default)
         {
             var encryptedEmail = EncryptionHelper.EncryptDeterministic(email);
@@ -20,7 +23,10 @@ namespace Infrastructure.Repositories
                 .FirstOrDefaultAsync(u => u.Email == encryptedEmail, ct);
 
             if (user != null)
+            {
+                _db.Entry(user).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
                 DecryptUserSensitiveData(user);
+            }
 
             return user;
 

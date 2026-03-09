@@ -27,7 +27,7 @@ namespace Application.Usecase.Auth.Login
                 throw new UnauthorizedAccessException("Invalid email or password.");
 
             // Generate tokens
-            var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Name);
+            var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Name, user.Role.ToString());
             var refreshToken = _jwt.GenerateRefreshToken();
 
             // Get expiration times from settings

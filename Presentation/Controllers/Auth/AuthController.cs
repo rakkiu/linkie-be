@@ -4,6 +4,7 @@ using Application.Usecase.Auth.ChangePassword;
 using Application.Usecase.Auth.ForgotPassword;
 using Application.Usecase.Auth.Login;
 using Application.Usecase.Auth.Logout;
+using Application.Usecase.Auth.Register;
 using Application.Usecase.Auth.ResetPassword;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -263,5 +264,57 @@ namespace Presentation.Controllers.Auth
             }
         }
 
+        // ---------------- REGISTER ----------------
+        [HttpPost("register")]
+        [ProducesResponseType(typeof(ApiResponse<RegisterResponseDto>), 201)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 409)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<RegisterResponseDto>>> Register(
+            [FromBody] RegisterCommand command,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _mediator.Send(command, cancellationToken);
+                return StatusCode(201, new ApiResponse<RegisterResponseDto>
+                {
+                    StatusCode = 201,
+                    Message = "Registration successful.",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = 400,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new ApiResponse<object>
+                {
+                    StatusCode = 409,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while processing your request.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
     }
 }

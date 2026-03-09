@@ -31,7 +31,7 @@ namespace Infrastructure.Identity
         /// </summary>
         /// <param name="user">The user.</param>
         /// <returns></returns>
-        public string GenerateAccessToken(Guid userId, string email, string? fullName = null)
+        public string GenerateAccessToken(Guid userId, string email, string? fullName = null, string? role = null)
         {
             var claims = new List<Claim>
             {
@@ -41,6 +41,9 @@ namespace Infrastructure.Identity
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             };
+
+            if (!string.IsNullOrEmpty(role))
+                claims.Add(new Claim(System.Security.Claims.ClaimTypes.Role, role));
             
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
