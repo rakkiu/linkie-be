@@ -9,6 +9,7 @@ using Infrastructure.Security;
 using Domain.Interfaces;
 using Infrastructure.Repositories;
 using Infrastructure.Identity; // Add this
+using Infrastructure.Services;
 using Infrastructure.Shared;
 using Application.Usecase.Auth.Login;   // Add this
 
@@ -40,6 +41,7 @@ namespace Presentation.Extentions
             // Register services
             services.Configure<JwtSettings>(config.GetSection("JwtSettings")); // Configure JwtSettings
             services.AddScoped<IJwtService, JwtService>(); // Register JwtService
+            services.AddScoped<IEmailService, EmailService>(); // Register EmailService
 
             // 🔹 MediatR
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly));

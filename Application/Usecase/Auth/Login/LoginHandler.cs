@@ -13,8 +13,9 @@ namespace Application.Usecase.Auth.Login
         private readonly IJwtService _jwt;
         private readonly IJwtTokenRepository _jwtTokenRepo;
 
-        public LoginHandler(IJwtService jwt, IJwtTokenRepository jwtTokenRepo)
+        public LoginHandler(IUserRepository repo, IJwtService jwt, IJwtTokenRepository jwtTokenRepo)
         {
+            _repo = repo;
             _jwt = jwt;
             _jwtTokenRepo = jwtTokenRepo;
         }
@@ -38,10 +39,24 @@ namespace Application.Usecase.Auth.Login
             {
                 Token = accessToken,
                 TokenType = "AccessToken",
-                ExpiresAt = DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes),
+                ExpiresAt = DateTime.SpecifyKind(DateTime.UtcNow.AddMinutes(accessTokenExpirationMinutes), DateTimeKind.Unspecified),
                 IsRevoked = false,
                 UserId = user.Id
             };
+            await _jwtTokenRepo.SaveTokenAsync(accessTokenEntity, cancellationToken);
+
+            // Save RefreshToken to database
+            var refreshTokenEntity = new JwtToken
+            {
+                Token = refreshToken,
+                TokenType = "RefreshToken",
+                ExpiresAt = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(refreshTokenExpirationDays), DateTimeKind.Unspecified),
+                IsRevoked = false,
+                UserId = user.Id
+            };
+            await _jwtTokenRepo.SaveTokenAsync(refreshTokenEntity, cancellationToken);
+            await _jwtTokenRepo.SaveChangeAsync(cancellationToken);
+
             return new LoginResponseDto
             {
                 AccessToken = accessToken,

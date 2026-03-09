@@ -16,7 +16,6 @@ namespace Infrastructure.Repositories
         {
             var encryptedEmail = EncryptionHelper.EncryptDeterministic(email);
             var user = await _db.Users
-                .Include(u => u.Role)
                 .Include(u => u.JwtTokens)
                 .FirstOrDefaultAsync(u => u.Email == encryptedEmail, ct);
 
@@ -26,6 +25,16 @@ namespace Infrastructure.Repositories
             return user;
 
         }
+        public async Task<User?> GetByIdWithoutDecryptAsync(Guid id, CancellationToken ct = default)
+        {
+            return await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
+        }
+        public void UpdatePasswordOnly(User user)
+        {
+            var entry = _db.Entry(user);
+            entry.Property(u => u.PasswordHash).IsModified = true;
+        }
+
         private static void DecryptUserSensitiveData(User user)
         {
             user.Email = EncryptionHelper.DecryptDeterministic(user.Email);
