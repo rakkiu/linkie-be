@@ -18,6 +18,23 @@ namespace Infrastructure.Security
             }
         }
 
+        public static string DecryptDeterministic(string cipherText)
+        {
+            if (string.IsNullOrEmpty(cipherText))
+                return cipherText;
+
+            var cipherBytes = Convert.FromBase64String(cipherText);
+            using var aes = Aes.Create();
+            aes.Key = _key!;
+            aes.IV = new byte[16]; // fixed IV = zeros
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.PKCS7;
+
+            using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+            var plainBytes = decryptor.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
+            return Encoding.UTF8.GetString(plainBytes);
+        }
+
         public static string EncryptDeterministic(string plainText)
         {
             if (string.IsNullOrEmpty(plainText)) return plainText;
@@ -42,35 +59,6 @@ namespace Infrastructure.Security
             }
         }
 
-        public static string DecryptDeterministic(string cipherText)
-        {
-            if (string.IsNullOrEmpty(cipherText)) return cipherText;
-
-            try
-            {
-                var buffer = Convert.FromBase64String(cipherText);
-
-                using (var aes = Aes.Create())
-                {
-                    aes.Key = _key;
-                    aes.IV = _fixedIv;
-                    aes.Mode = CipherMode.CBC;
-                    aes.Padding = PaddingMode.PKCS7;
-
-                    using (var decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
-                    using (var ms = new MemoryStream(buffer))
-                    using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-                    using (var sr = new StreamReader(cs))
-                    {
-                        return sr.ReadToEnd();
-                    }
-                }
-            }
-            catch
-            {
-                return cipherText; // Return original if decryption fails
-            }
-        }
 
         public static string Encrypt(string plainText)
         {
