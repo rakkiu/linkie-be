@@ -10,6 +10,9 @@ namespace Domain.Entity
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public string? Location { get; set; }
+        public string? ThumbnailUrl { get; set; }
+        public int MaxParticipants { get; set; }
+        public bool IsWishwallEnabled { get; set; }
         public EventStatus Status { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

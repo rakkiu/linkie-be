@@ -1,6 +1,7 @@
 using Application.Usecase.ArFrame.GetFrames;
 using Application.Usecase.ArFrame.RecordUsage;
-using Application.Usecase.Event.GetEvents;
+using Application.Usecase.EventManagement.GetEventById;
+using Application.Usecase.EventManagement.GetEvents;
 using Application.Usecase.Wishwall.GetMessages;
 using Application.Usecase.Wishwall.SendMessage;
 using MediatR;
@@ -31,6 +32,33 @@ namespace Presentation.Controllers.Event
             {
                 StatusCode = 200,
                 Message = "Events retrieved successfully.",
+                Data = result,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+
+        // GET /api/events/{id}
+        [HttpGet("{id:guid}")]
+        [ProducesResponseType(typeof(ApiResponse<EventDetailDto>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        public async Task<ActionResult<ApiResponse<EventDetailDto>>> GetEventById(
+            Guid id,
+            CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(new GetEventByIdQuery(id), cancellationToken);
+            if (result == null)
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = $"Event with ID {id} was not found.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+
+            return Ok(new ApiResponse<EventDetailDto>
+            {
+                StatusCode = 200,
+                Message = "Event retrieved successfully.",
                 Data = result,
                 ResponsedAt = DateTime.UtcNow
             });
