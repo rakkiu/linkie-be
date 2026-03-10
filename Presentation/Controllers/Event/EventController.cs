@@ -1,6 +1,7 @@
 using Application.Usecase.ArFrame.GetFrames;
 using Application.Usecase.ArFrame.RecordUsage;
 using Application.Usecase.Event.GetEvents;
+using Application.Usecase.Wishwall.ApproveMessage;
 using Application.Usecase.Wishwall.GetMessages;
 using Application.Usecase.Wishwall.SendMessage;
 using MediatR;
@@ -130,6 +131,52 @@ namespace Presentation.Controllers.Event
                 {
                     StatusCode = 500,
                     Message = "An error occurred while sending the message.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // PATCH /api/events/{eventId}/wishwall/{messageId}/approve
+        [Authorize(Roles = "Staff,Admin")]
+        [HttpPatch("{eventId:guid}/wishwall/{messageId:guid}/approve")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<object>>> ApproveWishwallMessage(
+            Guid eventId,
+            Guid messageId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _mediator.Send(new ApproveWishwallMessageCommand(messageId), cancellationToken);
+
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "Message approved successfully.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while approving the message.",
                     Data = null,
                     ResponsedAt = DateTime.UtcNow
                 });

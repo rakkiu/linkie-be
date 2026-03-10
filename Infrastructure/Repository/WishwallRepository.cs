@@ -14,9 +14,21 @@ namespace Infrastructure.Repository
         public async Task<List<WishwallMessage>> GetByEventIdAsync(Guid eventId, CancellationToken ct = default)
             => await _db.WishwallMessages
                 .Include(m => m.User)
-                .Where(m => m.EventId == eventId && !m.IsHidden)
+                .Where(m => m.EventId == eventId && m.IsApproved && !m.IsHidden)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync(ct);
+
+        public async Task<List<WishwallMessage>> GetPendingByEventIdAsync(Guid eventId, CancellationToken ct = default)
+            => await _db.WishwallMessages
+                .Include(m => m.User)
+                .Where(m => m.EventId == eventId && !m.IsApproved && !m.IsHidden)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync(ct);
+
+        public async Task<WishwallMessage?> GetByIdAsync(Guid messageId, CancellationToken ct = default)
+            => await _db.WishwallMessages
+                .Include(m => m.User)
+                .FirstOrDefaultAsync(m => m.Id == messageId, ct);
 
         public async Task AddAsync(WishwallMessage message, CancellationToken ct = default)
             => await _db.WishwallMessages.AddAsync(message, ct);
