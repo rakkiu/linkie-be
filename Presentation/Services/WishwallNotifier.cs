@@ -18,5 +18,8 @@ namespace Presentation.Services
 
         public Task NotifyStaffNewPendingAsync(Guid eventId, object payload)
             => _hub.Clients.Group($"staff:{eventId}").SendAsync("NewPendingMessage", payload);
+
+        public Task DisplayOnLedAsync(Guid eventId, object payload)
+            => _hub.Clients.Group($"led:{eventId}").SendAsync("LedDisplay", payload);
     }
 }

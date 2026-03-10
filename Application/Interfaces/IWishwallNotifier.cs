@@ -10,5 +10,8 @@ namespace Application.Interfaces
 
         // Notify staff that a new message is pending review
         Task NotifyStaffNewPendingAsync(Guid eventId, object payload);
+
+        // Push a specific message to the LED screen group
+        Task DisplayOnLedAsync(Guid eventId, object payload);
     }
 }

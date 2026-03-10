@@ -17,5 +17,12 @@ namespace Presentation.Hubs
 
         public async Task LeaveStaff(string eventId)
             => await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"staff:{eventId}");
+
+        // LED screen joins a dedicated group; receives LedDisplay events pushed by organizer
+        public async Task JoinLed(string eventId)
+            => await Groups.AddToGroupAsync(Context.ConnectionId, $"led:{eventId}");
+
+        public async Task LeaveLed(string eventId)
+            => await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"led:{eventId}");
     }
 }
