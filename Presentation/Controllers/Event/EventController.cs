@@ -2,7 +2,10 @@ using Application.Usecase.ArFrame.GetFrames;
 using Application.Usecase.ArFrame.RecordUsage;
 using Application.Usecase.EventManagement.GetEventById;
 using Application.Usecase.EventManagement.GetEvents;
+using Application.Usecase.Wishwall.ApproveMessage;
+using Application.Usecase.Wishwall.DisplayOnLed;
 using Application.Usecase.Wishwall.GetMessages;
+using Application.Usecase.Wishwall.GetPendingMessages;
 using Application.Usecase.Wishwall.SendMessage;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -247,6 +250,131 @@ namespace Presentation.Controllers.Event
                 {
                     StatusCode = 500,
                     Message = "An error occurred while recording frame usage.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // ── Wishwall Moderation endpoints ─────────────────────────────────────
+
+        // GET /api/events/{eventId}/wishwall/pending  (Staff only)
+        [Authorize]
+        [HttpGet("{eventId:guid}/wishwall/pending")]
+        [ProducesResponseType(typeof(ApiResponse<List<PendingMessageDto>>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<List<PendingMessageDto>>>> GetPendingMessages(
+            Guid eventId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _mediator.Send(new GetPendingMessagesQuery(eventId), cancellationToken);
+                return Ok(new ApiResponse<List<PendingMessageDto>>
+                {
+                    StatusCode = 200,
+                    Message = "Pending messages retrieved successfully.",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving pending messages.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // PATCH /api/events/{eventId}/wishwall/{messageId}/approve  (Staff only)
+        [Authorize]
+        [HttpPatch("{eventId:guid}/wishwall/{messageId:guid}/approve")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<object>>> ApproveMessage(
+            Guid eventId,
+            Guid messageId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _mediator.Send(new ApproveMessageCommand(eventId, messageId), cancellationToken);
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "Message approved successfully.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while approving the message.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // POST /api/events/{eventId}/wishwall/{messageId}/display  (Staff only)
+        [Authorize]
+        [HttpPost("{eventId:guid}/wishwall/{messageId:guid}/display")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<object>>> DisplayOnLed(
+            Guid eventId,
+            Guid messageId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _mediator.Send(new DisplayOnLedCommand(eventId, messageId), cancellationToken);
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "Message pushed to LED successfully.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while pushing the message to LED.",
                     Data = null,
                     ResponsedAt = DateTime.UtcNow
                 });

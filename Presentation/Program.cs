@@ -3,7 +3,7 @@ using Infrastructure.Security;
 using Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Presentation.Extentions;
-using Presentation.Extentions;
+using Presentation.Hubs;
 using Presentation.Middlewares;
 
 namespace Presentation
@@ -70,10 +70,11 @@ namespace Presentation
             // Kích hoạt CORS
             app.UseCors("AllowAll");
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
-
             app.MapControllers();
+            app.MapHub<WishwallHub>("/hubs/wishwall");
 
             app.Run();
         }

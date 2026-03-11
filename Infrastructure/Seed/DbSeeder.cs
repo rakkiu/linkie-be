@@ -11,51 +11,36 @@ namespace Infrastructure.Seed
     {
         public static async Task SeedAsync(ApplicationDbContext context, IConfiguration config)
         {
-            // 1. LẤY CẤU HÌNH TỪ APPSETTINGS.JSON HOẶC BIẾN MÔI TRƯỜNG
-            // Khắc phục triệt để lỗi Hardcode
-            var adminEmail = config["AdminUser:DefaultEmail"];
-            var adminPassword = config["AdminUser:DefaultPassword"];
-
-            // Fallback an toàn nếu appsettings chưa có
-            if (string.IsNullOrEmpty(adminEmail)) adminEmail = "admin@linkie.com";
-            if (string.IsNullOrEmpty(adminPassword)) adminPassword = "Admin@123";
-
-            var encryptedEmail = EncryptionHelper.EncryptDeterministic(adminEmail);
-            
-            // Tìm user bằng email đã mã hóa
-            var admin = await context.Users.FirstOrDefaultAsync(u => u.Email == encryptedEmail);
-            if (admin == null)
+            var seedAccounts = new[]
             {
-                // Tìm bằng email chưa mã hóa (dự phòng dữ liệu cũ)
-                admin = await context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
-            }
+                (Role: UserRole.Admin,     Name: "Admin User",     Email: "admin@linkie.com",     Password: "Admin@123"),
+                (Role: UserRole.Organizer, Name: "Organizer User", Email: "organizer@linkie.com", Password: "Organizer@123"),
+                (Role: UserRole.Staff,     Name: "Staff User",     Email: "staff@linkie.com",     Password: "Staff@123"),
+                (Role: UserRole.Attendee,  Name: "Attendee User",  Email: "attendee@linkie.com",  Password: "Attendee@123"),
+                (Role: UserRole.LED,       Name: "LED User",       Email: "led@linkie.com",       Password: "Led@123"),
+            };
 
-            if (admin == null)
+            foreach (var (role, name, email, password) in seedAccounts)
             {
-                admin = new User
+                var encryptedEmail = EncryptionHelper.EncryptDeterministic(email);
+                var exists = await context.Users.AnyAsync(u => u.Email == encryptedEmail);
+                if (exists) continue;
+
+                context.Users.Add(new User
                 {
                     Id = Guid.NewGuid(),
-                    Name = EncryptionHelper.Encrypt("Admin"),
+                    Name = EncryptionHelper.Encrypt(name),
                     Email = encryptedEmail,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
-                    Role = UserRole.Admin,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await context.Users.AddAsync(admin);
-            }
-            else
-            {
-                // Ép cập nhật lại quyền Admin và Password mới nhất từ config
-                admin.Role = UserRole.Admin;
-                admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword);
-                context.Users.Update(admin);
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+                    Role = role,
+                    CreatedAt = DateTime.UtcNow,
+                });
             }
 
-            // 2. Seed sample event
-            var hasEvent = await context.Events.AnyAsync();
-            if (!hasEvent)
+            // Seed sample event
+            if (!await context.Events.AnyAsync())
             {
-                var sampleEvent = new Event
+                context.Events.Add(new Event
                 {
                     Id = Guid.NewGuid(),
                     Name = "NIGHTS FESTIVAL",
@@ -63,10 +48,9 @@ namespace Infrastructure.Seed
                     StartTime = new DateTime(2026, 3, 1, 18, 0, 0, DateTimeKind.Utc),
                     EndTime = new DateTime(2026, 3, 1, 23, 59, 0, DateTimeKind.Utc),
                     Location = "TP. Hồ Chí Minh",
-                    Status = EventStatus.Active,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await context.Events.AddAsync(sampleEvent);
+                    Status = EventStatus.Ongoing,
+                    CreatedAt = DateTime.UtcNow,
+                });
             }
 
             await context.SaveChangesAsync();

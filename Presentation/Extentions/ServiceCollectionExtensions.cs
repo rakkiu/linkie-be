@@ -12,6 +12,7 @@ using Infrastructure.Identity; // Add this
 using Infrastructure.Services;
 using Infrastructure.Shared;
 using Application.Usecase.Auth.Login;   // Add this
+using Presentation.Services;
 
 namespace Presentation.Extentions
 {
@@ -48,6 +49,7 @@ namespace Presentation.Extentions
             services.AddScoped<IEmailService, EmailService>(); // Register EmailService
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
             services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
+            services.AddScoped<IWishwallNotifier, WishwallNotifier>(); // Register WishwallNotifier (SignalR)
 
             // 🔹 MediatR
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly));
@@ -74,8 +76,25 @@ namespace Presentation.Extentions
                             RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
                         };
+                        // Allow SignalR to receive JWT from query string (?access_token=...)
+                        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                        {
+                            OnMessageReceived = context =>
+                            {
+                                var accessToken = context.Request.Query["access_token"];
+                                var path = context.HttpContext.Request.Path;
+                                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                                {
+                                    context.Token = accessToken;
+                                }
+                                return Task.CompletedTask;
+                            }
+                        };
                     });
             }
+
+            // 🔹 SignalR
+            services.AddSignalR();
 
             // 🔹 Authorization
             services.AddAuthorization();
