@@ -1,4 +1,3 @@
-using Application.Interfaces;
 using Domain.Interface;
 using MediatR;
 
@@ -7,12 +6,10 @@ namespace Application.Usecase.EventManagement.UpdateEvent
     public class UpdateEventHandler : IRequestHandler<UpdateEventCommand, UpdateEventResult>
     {
         private readonly IEventRepository _eventRepository;
-        private readonly ICloudinaryService _cloudinaryService;
 
-        public UpdateEventHandler(IEventRepository eventRepository, ICloudinaryService cloudinaryService)
+        public UpdateEventHandler(IEventRepository eventRepository)
         {
             _eventRepository = eventRepository;
-            _cloudinaryService = cloudinaryService;
         }
 
         public async Task<UpdateEventResult> Handle(UpdateEventCommand request, CancellationToken cancellationToken)
@@ -23,11 +20,8 @@ namespace Application.Usecase.EventManagement.UpdateEvent
                 throw new KeyNotFoundException($"Event with ID {request.Id} not found.");
             }
 
-            if (request.Thumbnail != null && request.Thumbnail.Length > 0)
-            {
-                await using var stream = request.Thumbnail.OpenReadStream();
-                @event.ThumbnailUrl = await _cloudinaryService.UploadImageAsync(stream, request.Thumbnail.FileName, cancellationToken);
-            }
+            if (request.ThumbnailUrl != null)
+                @event.ThumbnailUrl = request.ThumbnailUrl;
 
             @event.Name = request.Name;
             @event.Description = request.Description;

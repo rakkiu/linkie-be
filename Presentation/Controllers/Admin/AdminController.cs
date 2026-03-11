@@ -49,20 +49,13 @@ namespace Presentation.Controllers.Admin
 
         // POST /api/admin/events
         [HttpPost("events")]
-        [Consumes("multipart/form-data")]
+        [Consumes("application/json")]
         [ProducesResponseType(typeof(ApiResponse<CreateEventResult>), 201)]
         public async Task<ActionResult<ApiResponse<CreateEventResult>>> CreateEvent(
-            [FromForm] string name,
-            [FromForm] string? description,
-            [FromForm] DateTimeOffset startTime,
-            [FromForm] DateTimeOffset endTime,
-            [FromForm] string? location,
-            [FromForm] int maxParticipants,
-            [FromForm] bool isWishwallEnabled,
-            IFormFile? thumbnail,
+            [FromBody] CreateEventRequest req,
             CancellationToken ct)
         {
-            var command = new CreateEventCommand(name, description, startTime, endTime, location, maxParticipants, isWishwallEnabled, thumbnail);
+            var command = new CreateEventCommand(req.Name, req.Description, req.StartTime, req.EndTime, req.Location, req.MaxParticipants, req.IsWishwallEnabled, req.ThumbnailUrl);
             var result = await _mediator.Send(command, ct);
             return StatusCode(201, new ApiResponse<CreateEventResult>
             {
@@ -75,22 +68,14 @@ namespace Presentation.Controllers.Admin
 
         // PUT /api/admin/events/{id}
         [HttpPut("events/{id:guid}")]
-        [Consumes("multipart/form-data")]
+        [Consumes("application/json")]
         [ProducesResponseType(typeof(ApiResponse<UpdateEventResult>), 200)]
         public async Task<ActionResult<ApiResponse<UpdateEventResult>>> UpdateEvent(
             Guid id,
-            [FromForm] string name,
-            [FromForm] string? description,
-            [FromForm] DateTimeOffset startTime,
-            [FromForm] DateTimeOffset endTime,
-            [FromForm] string? location,
-            [FromForm] int maxParticipants,
-            [FromForm] bool isWishwallEnabled,
-            [FromForm] EventStatus status,
-            IFormFile? thumbnail,
+            [FromBody] UpdateEventRequest req,
             CancellationToken ct)
         {
-            var command = new UpdateEventCommand(id, name, description, startTime, endTime, location, maxParticipants, isWishwallEnabled, status, thumbnail);
+            var command = new UpdateEventCommand(id, req.Name, req.Description, req.StartTime, req.EndTime, req.Location, req.MaxParticipants, req.IsWishwallEnabled, req.Status, req.ThumbnailUrl);
             var result = await _mediator.Send(command, ct);
             return Ok(new ApiResponse<UpdateEventResult>
             {

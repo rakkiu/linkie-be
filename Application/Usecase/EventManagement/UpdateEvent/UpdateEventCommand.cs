@@ -1,5 +1,4 @@
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Domain.Enums;
 
 namespace Application.Usecase.EventManagement.UpdateEvent
@@ -14,7 +13,7 @@ namespace Application.Usecase.EventManagement.UpdateEvent
         int MaxParticipants,
         bool IsWishwallEnabled,
         EventStatus Status,
-        IFormFile? Thumbnail
+        string? ThumbnailUrl
     ) : IRequest<UpdateEventResult>;
 
     public record UpdateEventResult(Guid Id, string Name, string? ThumbnailUrl);

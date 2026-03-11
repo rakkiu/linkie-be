@@ -1,4 +1,3 @@
-using Application.Interfaces;
 using Domain.Entity;
 using Domain.Enums;
 using Domain.Interface;
@@ -9,24 +8,14 @@ namespace Application.Usecase.EventManagement.CreateEvent
     public class CreateEventHandler : IRequestHandler<CreateEventCommand, CreateEventResult>
     {
         private readonly IEventRepository _eventRepository;
-        private readonly ICloudinaryService _cloudinaryService;
 
-        public CreateEventHandler(IEventRepository eventRepository, ICloudinaryService cloudinaryService)
+        public CreateEventHandler(IEventRepository eventRepository)
         {
             _eventRepository = eventRepository;
-            _cloudinaryService = cloudinaryService;
         }
 
         public async Task<CreateEventResult> Handle(CreateEventCommand request, CancellationToken cancellationToken)
         {
-            string? thumbnailUrl = null;
-
-            if (request.Thumbnail != null && request.Thumbnail.Length > 0)
-            {
-                await using var stream = request.Thumbnail.OpenReadStream();
-                thumbnailUrl = await _cloudinaryService.UploadImageAsync(stream, request.Thumbnail.FileName, cancellationToken);
-            }
-
             var @event = new Event
             {
                 Id = Guid.NewGuid(),
@@ -37,7 +26,7 @@ namespace Application.Usecase.EventManagement.CreateEvent
                 Location = request.Location,
                 MaxParticipants = request.MaxParticipants,
                 IsWishwallEnabled = request.IsWishwallEnabled,
-                ThumbnailUrl = thumbnailUrl,
+                ThumbnailUrl = request.ThumbnailUrl,
                 Status = EventStatus.Active,
                 CreatedAt = DateTime.UtcNow
             };

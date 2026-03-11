@@ -1,5 +1,4 @@
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Domain.Enums;
 
 namespace Application.Usecase.EventManagement.CreateEvent
@@ -12,7 +11,7 @@ namespace Application.Usecase.EventManagement.CreateEvent
         string? Location,
         int MaxParticipants,
         bool IsWishwallEnabled,
-        IFormFile? Thumbnail
+        string? ThumbnailUrl
     ) : IRequest<CreateEventResult>;
 
     public record CreateEventResult(Guid Id, string Name, string? ThumbnailUrl);
