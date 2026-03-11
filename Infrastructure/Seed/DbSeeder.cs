@@ -2,40 +2,66 @@ using Domain.Entity;
 using Domain.Enums;
 using Infrastructure.Identity;
 using Infrastructure.Security;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure.Seed
 {
     public static class DbSeeder
     {
-        public static async Task SeedAsync(ApplicationDbContext context)
+        public static async Task SeedAsync(ApplicationDbContext context, IConfiguration config)
         {
-            var roles = new[]
+            // 1. LẤY CẤU HÌNH TỪ APPSETTINGS.JSON HOẶC BIẾN MÔI TRƯỜNG
+            var adminEmail = config["AdminUser:DefaultEmail"];
+            var adminPassword = config["AdminUser:DefaultPassword"];
+
+            if (string.IsNullOrEmpty(adminEmail)) adminEmail = "admin@linkie.com";
+            if (string.IsNullOrEmpty(adminPassword)) adminPassword = "Admin@123";
+
+            var encryptedEmail = EncryptionHelper.EncryptDeterministic(adminEmail);
+
+            var admin = await context.Users.FirstOrDefaultAsync(u => u.Email == encryptedEmail);
+            if (admin == null)
             {
-                (Role: UserRole.Admin,     Name: "Admin User",     Email: "admin@linkie.com",     Password: "Admin@123"),
-                (Role: UserRole.Organizer, Name: "Organizer User", Email: "organizer@linkie.com", Password: "Organizer@123"),
-                (Role: UserRole.Staff,     Name: "Staff User",     Email: "staff@linkie.com",     Password: "Staff@123"),
-                (Role: UserRole.Attendee,  Name: "Attendee User",  Email: "attendee@linkie.com",  Password: "Attendee@123"),
-                (Role: UserRole.LED,       Name: "LED User",       Email: "led@linkie.com",       Password: "Led@123"),
-            };
+                admin = await context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
+            }
 
-            foreach (var (role, name, email, password) in roles)
+            if (admin == null)
             {
-                var encryptedEmail = EncryptionHelper.EncryptDeterministic(email);
-
-                var exists = context.Users.Any(u => u.Email == encryptedEmail);
-                if (exists) continue;
-
-                var user = new User
+                admin = new User
                 {
                     Id = Guid.NewGuid(),
-                    Name = EncryptionHelper.Encrypt(name),
+                    Name = EncryptionHelper.Encrypt("Admin"),
                     Email = encryptedEmail,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                    Role = role,
-                    CreatedAt = DateTime.UtcNow,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                    Role = UserRole.Admin,
+                    CreatedAt = DateTime.UtcNow
                 };
+                await context.Users.AddAsync(admin);
+            }
+            else
+            {
+                admin.Role = UserRole.Admin;
+                admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword);
+                context.Users.Update(admin);
+            }
 
-                context.Users.Add(user);
+            // 2. Seed sample event
+            var hasEvent = await context.Events.AnyAsync();
+            if (!hasEvent)
+            {
+                var sampleEvent = new Event
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "NIGHTS FESTIVAL",
+                    Description = "Festival âm nhạc đêm đầu tiên của Linkie.",
+                    StartTime = new DateTime(2026, 3, 1, 18, 0, 0, DateTimeKind.Utc),
+                    EndTime = new DateTime(2026, 3, 1, 23, 59, 0, DateTimeKind.Utc),
+                    Location = "TP. Hồ Chí Minh",
+                    Status = EventStatus.Upcoming,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await context.Events.AddAsync(sampleEvent);
             }
 
             await context.SaveChangesAsync();

@@ -3,6 +3,15 @@ using Application.Usecase.Admin.FrameAnalytics;
 using Application.Usecase.Admin.Sentiment;
 using Application.Usecase.Admin.SystemHealth;
 using Application.Usecase.Admin.Wishwall;
+using Application.Usecase.ArFrame.DeleteFrame;
+using Application.Usecase.ArFrame.GetFrames;
+using Application.Usecase.ArFrame.ToggleFrame;
+using Application.Usecase.ArFrame.UploadFrame;
+using Application.Usecase.EventManagement.CreateEvent;
+using Application.Usecase.EventManagement.DeleteEvent;
+using Application.Usecase.EventManagement.GetAdminEventList;
+using Application.Usecase.EventManagement.UpdateEvent;
+using Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +27,79 @@ namespace Presentation.Controllers.Admin
         private readonly IMediator _mediator;
 
         public AdminController(IMediator mediator) => _mediator = mediator;
+
+        // ──────────────────────────────────────────────────────────────
+        // EVENT MANAGEMENT
+        // ──────────────────────────────────────────────────────────────
+
+        // GET /api/admin/events
+        [HttpGet("events")]
+        [ProducesResponseType(typeof(ApiResponse<List<AdminEventDto>>), 200)]
+        public async Task<ActionResult<ApiResponse<List<AdminEventDto>>>> GetAdminEvents(CancellationToken ct)
+        {
+            var result = await _mediator.Send(new GetAdminEventListQuery(), ct);
+            return Ok(new ApiResponse<List<AdminEventDto>>
+            {
+                StatusCode = 200,
+                Message = "Admin event list retrieved successfully.",
+                Data = result,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+
+        // POST /api/admin/events
+        [HttpPost("events")]
+        [Consumes("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<CreateEventResult>), 201)]
+        public async Task<ActionResult<ApiResponse<CreateEventResult>>> CreateEvent(
+            [FromBody] CreateEventRequest req,
+            CancellationToken ct)
+        {
+            var command = new CreateEventCommand(req.Name, req.Description, req.StartTime, req.EndTime, req.Location, req.MaxParticipants, req.IsWishwallEnabled, req.ThumbnailUrl);
+            var result = await _mediator.Send(command, ct);
+            return StatusCode(201, new ApiResponse<CreateEventResult>
+            {
+                StatusCode = 201,
+                Message = "Event created successfully.",
+                Data = result,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+
+        // PUT /api/admin/events/{id}
+        [HttpPut("events/{id:guid}")]
+        [Consumes("application/json")]
+        [ProducesResponseType(typeof(ApiResponse<UpdateEventResult>), 200)]
+        public async Task<ActionResult<ApiResponse<UpdateEventResult>>> UpdateEvent(
+            Guid id,
+            [FromBody] UpdateEventRequest req,
+            CancellationToken ct)
+        {
+            var command = new UpdateEventCommand(id, req.Name, req.Description, req.StartTime, req.EndTime, req.Location, req.MaxParticipants, req.IsWishwallEnabled, req.Status, req.ThumbnailUrl);
+            var result = await _mediator.Send(command, ct);
+            return Ok(new ApiResponse<UpdateEventResult>
+            {
+                StatusCode = 200,
+                Message = "Event updated successfully.",
+                Data = result,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+
+        // DELETE /api/admin/events/{id}
+        [HttpDelete("events/{id:guid}")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteEvent(Guid id, CancellationToken ct)
+        {
+            await _mediator.Send(new DeleteEventCommand(id), ct);
+            return Ok(new ApiResponse<object>
+            {
+                StatusCode = 200,
+                Message = "Event deleted successfully.",
+                Data = null,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
 
         // FR-01: GET /api/admin/events/{eventId}/dashboard
         [HttpGet("events/{eventId:guid}/dashboard")]
@@ -174,6 +256,180 @@ namespace Presentation.Controllers.Admin
                 {
                     StatusCode = 500,
                     Message = "An error occurred while retrieving system health.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+        // ──────────────────────────────────────────────────────────────
+        // AR FRAME MANAGEMENT
+        // ──────────────────────────────────────────────────────────────
+
+        // GET /api/admin/events/{eventId}/frames
+        [HttpGet("events/{eventId:guid}/frames")]
+        [ProducesResponseType(typeof(ApiResponse<List<AdminArFrameDto>>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<List<AdminArFrameDto>>>> GetAllArFrames(
+            Guid eventId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _mediator.Send(new GetAllArFramesQuery(eventId), cancellationToken);
+                return Ok(new ApiResponse<List<AdminArFrameDto>>
+                {
+                    StatusCode = 200,
+                    Message = "AR frames retrieved successfully.",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving AR frames.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // POST /api/admin/events/{eventId}/frames
+        [HttpPost("events/{eventId:guid}/frames")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(ApiResponse<UploadArFrameResult>), 201)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<UploadArFrameResult>>> UploadArFrame(
+            Guid eventId,
+            [FromForm] string frameName,
+            IFormFile file,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(frameName))
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        StatusCode = 400,
+                        Message = "frameName is required.",
+                        Data = null,
+                        ResponsedAt = DateTime.UtcNow
+                    });
+
+                var result = await _mediator.Send(
+                    new UploadArFrameCommand(eventId, frameName, file), cancellationToken);
+
+                return StatusCode(201, new ApiResponse<UploadArFrameResult>
+                {
+                    StatusCode = 201,
+                    Message = "AR frame uploaded successfully.",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = 400,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while uploading the AR frame.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // PATCH /api/admin/frames/{frameId}/toggle
+        [HttpPatch("frames/{frameId:guid}/toggle")]
+        [ProducesResponseType(typeof(ApiResponse<ToggleArFrameResult>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<ToggleArFrameResult>>> ToggleArFrame(
+            Guid frameId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _mediator.Send(new ToggleArFrameCommand(frameId), cancellationToken);
+                return Ok(new ApiResponse<ToggleArFrameResult>
+                {
+                    StatusCode = 200,
+                    Message = $"AR frame is now {(result.IsActive ? "active" : "inactive")}.",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while toggling the AR frame.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // DELETE /api/admin/frames/{frameId}
+        [HttpDelete("frames/{frameId:guid}")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteArFrame(
+            Guid frameId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _mediator.Send(new DeleteArFrameCommand(frameId), cancellationToken);
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "AR frame deleted successfully.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while deleting the AR frame.",
                     Data = null,
                     ResponsedAt = DateTime.UtcNow
                 });

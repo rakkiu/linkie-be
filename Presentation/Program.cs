@@ -58,7 +58,7 @@ namespace Presentation
                 dbContext.Database.Migrate();
 
                 // 3. Chạy Seeder (Thêm dòng này)
-                DbSeeder.SeedAsync(dbContext).Wait(); 
+                DbSeeder.SeedAsync(dbContext, config).Wait(); 
             }
             // --------------------------------
 

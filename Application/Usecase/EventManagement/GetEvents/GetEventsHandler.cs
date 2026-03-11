@@ -2,7 +2,7 @@ using Domain.Enums;
 using Domain.Interface;
 using MediatR;
 
-namespace Application.Usecase.Event.GetEvents
+namespace Application.Usecase.EventManagement.GetEvents
 {
     public class GetEventsHandler : IRequestHandler<GetEventsQuery, List<EventResponseDto>>
     {
@@ -25,11 +25,12 @@ namespace Application.Usecase.Event.GetEvents
                 Id = e.Id,
                 Name = e.Name,
                 Description = e.Description,
-                StartTime = e.StartTime,
-                EndTime = e.EndTime,
+                StartTime = new DateTimeOffset(e.StartTime, TimeSpan.Zero),
+                EndTime = new DateTimeOffset(e.EndTime, TimeSpan.Zero),
                 Location = e.Location,
                 Status = e.Status.ToString(),
-                CreatedAt = e.CreatedAt
+                ThumbnailUrl = e.ThumbnailUrl,
+                CreatedAt = new DateTimeOffset(e.CreatedAt, TimeSpan.Zero)
             }).ToList();
         }
     }

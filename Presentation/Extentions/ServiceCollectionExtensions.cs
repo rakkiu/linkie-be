@@ -48,6 +48,7 @@ namespace Presentation.Extentions
             services.AddScoped<IJwtService, JwtService>(); // Register JwtService
             services.AddScoped<IEmailService, EmailService>(); // Register EmailService
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
+            services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
             services.AddScoped<IWishwallNotifier, WishwallNotifier>(); // Register WishwallNotifier
 
             // 🔹 MediatR
@@ -72,6 +73,7 @@ namespace Presentation.Extentions
                             ValidAudience = config["JwtSettings:Audience"],
                             IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
                             ClockSkew = TimeSpan.FromSeconds(30),
+                            RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
                         };
 
