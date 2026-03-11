@@ -72,7 +72,6 @@ namespace Presentation.Extentions
                             ValidAudience = config["JwtSettings:Audience"],
                             IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
                             ClockSkew = TimeSpan.FromSeconds(30),
-                            RoleClaimType = "RoleCode",
                             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
                         };
 

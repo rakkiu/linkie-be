@@ -5,6 +5,7 @@ namespace Domain.Enums
         Admin,
         Organizer,
         Staff,
-        Attendee
+        Attendee,
+        LED
     }
 }
