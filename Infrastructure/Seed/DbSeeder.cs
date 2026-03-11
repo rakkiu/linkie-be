@@ -12,21 +12,17 @@ namespace Infrastructure.Seed
         public static async Task SeedAsync(ApplicationDbContext context, IConfiguration config)
         {
             // 1. LẤY CẤU HÌNH TỪ APPSETTINGS.JSON HOẶC BIẾN MÔI TRƯỜNG
-            // Khắc phục triệt để lỗi Hardcode
             var adminEmail = config["AdminUser:DefaultEmail"];
             var adminPassword = config["AdminUser:DefaultPassword"];
 
-            // Fallback an toàn nếu appsettings chưa có
             if (string.IsNullOrEmpty(adminEmail)) adminEmail = "admin@linkie.com";
             if (string.IsNullOrEmpty(adminPassword)) adminPassword = "Admin@123";
 
             var encryptedEmail = EncryptionHelper.EncryptDeterministic(adminEmail);
-            
-            // Tìm user bằng email đã mã hóa
+
             var admin = await context.Users.FirstOrDefaultAsync(u => u.Email == encryptedEmail);
             if (admin == null)
             {
-                // Tìm bằng email chưa mã hóa (dự phòng dữ liệu cũ)
                 admin = await context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
             }
 
@@ -45,7 +41,6 @@ namespace Infrastructure.Seed
             }
             else
             {
-                // Ép cập nhật lại quyền Admin và Password mới nhất từ config
                 admin.Role = UserRole.Admin;
                 admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword);
                 context.Users.Update(admin);
@@ -63,7 +58,7 @@ namespace Infrastructure.Seed
                     StartTime = new DateTime(2026, 3, 1, 18, 0, 0, DateTimeKind.Utc),
                     EndTime = new DateTime(2026, 3, 1, 23, 59, 0, DateTimeKind.Utc),
                     Location = "TP. Hồ Chí Minh",
-                    Status = EventStatus.Active,
+                    Status = EventStatus.Upcoming,
                     CreatedAt = DateTime.UtcNow
                 };
                 await context.Events.AddAsync(sampleEvent);

@@ -12,6 +12,7 @@ using Infrastructure.Identity; // Add this
 using Infrastructure.Services;
 using Infrastructure.Shared;
 using Application.Usecase.Auth.Login;   // Add this
+using Presentation.Services;
 
 namespace Presentation.Extentions
 {
@@ -48,6 +49,7 @@ namespace Presentation.Extentions
             services.AddScoped<IEmailService, EmailService>(); // Register EmailService
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
             services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
+            services.AddScoped<IWishwallNotifier, WishwallNotifier>(); // Register WishwallNotifier
 
             // 🔹 MediatR
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly));
@@ -73,6 +75,22 @@ namespace Presentation.Extentions
                             ClockSkew = TimeSpan.FromSeconds(30),
                             RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
+                        };
+
+                        // Allow SignalR to pass JWT via query string (?access_token=...)
+                        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                        {
+                            OnMessageReceived = ctx =>
+                            {
+                                var accessToken = ctx.Request.Query["access_token"];
+                                var path = ctx.HttpContext.Request.Path;
+                                if (!string.IsNullOrEmpty(accessToken) &&
+                                    path.StartsWithSegments("/hubs"))
+                                {
+                                    ctx.Token = accessToken;
+                                }
+                                return Task.CompletedTask;
+                            }
                         };
                     });
             }

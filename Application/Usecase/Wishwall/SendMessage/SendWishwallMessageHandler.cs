@@ -1,3 +1,4 @@
+using Application.Interfaces;
 using Domain.Entity;
 using Domain.Enums;
 using Domain.Interface;
@@ -9,11 +10,16 @@ namespace Application.Usecase.Wishwall.SendMessage
     {
         private readonly IWishwallRepository _repo;
         private readonly IEventRepository _eventRepo;
+        private readonly IWishwallNotifier _notifier;
 
-        public SendWishwallMessageHandler(IWishwallRepository repo, IEventRepository eventRepo)
+        public SendWishwallMessageHandler(
+            IWishwallRepository repo,
+            IEventRepository eventRepo,
+            IWishwallNotifier notifier)
         {
             _repo = repo;
             _eventRepo = eventRepo;
+            _notifier = notifier;
         }
 
         public async Task<bool> Handle(SendWishwallMessageCommand request, CancellationToken cancellationToken)
@@ -33,11 +39,30 @@ namespace Application.Usecase.Wishwall.SendMessage
                 UserId = request.UserId,
                 Message = request.Message,
                 Sentiment = sentiment,
+                IsApproved = false,
                 IsHidden = false
             };
 
             await _repo.AddAsync(message, cancellationToken);
             await _repo.SaveChangesAsync(cancellationToken);
+
+            // Notify the sender their message is queued for approval
+            await _notifier.NotifyMessagePendingAsync(request.UserId, new
+            {
+                id = message.Id,
+                message = message.Message,
+                createdAt = message.CreatedAt
+            });
+
+            // Notify staff there is a new message to review
+            await _notifier.NotifyStaffNewPendingAsync(request.EventId, new
+            {
+                id = message.Id,
+                message = message.Message,
+                sentiment = sentiment.ToString(),
+                createdAt = message.CreatedAt
+            });
+
             return true;
         }
 

@@ -16,7 +16,7 @@ namespace Application.Usecase.EventManagement.GetEvents
             if (!string.IsNullOrWhiteSpace(request.Status) && Enum.TryParse(request.Status, ignoreCase: true, out EventStatus parsed))
                 status = parsed;
             else
-                status = EventStatus.Active;
+                status = EventStatus.Ongoing;
 
             var events = await _repo.GetByStatusAsync(status, cancellationToken);
 

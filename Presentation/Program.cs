@@ -3,8 +3,8 @@ using Infrastructure.Security;
 using Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Presentation.Extentions;
-using Presentation.Extentions;
 using Presentation.Middlewares;
+using Presentation.Hubs;
 
 namespace Presentation
 {
@@ -20,13 +20,20 @@ namespace Presentation
             // Add services to the container.
             builder.Services.AddAppServices(builder.Configuration);
 
-            // Thêm CORS service
+            // SignalR
+            builder.Services.AddSignalR();
+
+            // CORS — AllowCredentials is required for SignalR WebSocket/SSE
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAll",
-                    b => b.AllowAnyOrigin()
+                options.AddPolicy("AllowFrontend",
+                    b => b.WithOrigins(
+                              "http://localhost:5173",
+                              "https://localhost:5173",
+                              "http://localhost:3000")
                           .AllowAnyMethod()
-                          .AllowAnyHeader());
+                          .AllowAnyHeader()
+                          .AllowCredentials());
             });
 
             builder.Services.AddControllers();
@@ -68,12 +75,13 @@ namespace Presentation
             app.UseHttpsRedirection();
 
             // Kích hoạt CORS
-            app.UseCors("AllowAll");
+            app.UseCors("AllowFrontend");
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
-
             app.MapControllers();
+            app.MapHub<WishwallHub>("/hubs/wishwall");
 
             app.Run();
         }
