@@ -89,7 +89,7 @@ namespace Presentation.Middlewares // Updated namespace
                 var response = new ApiResponse<object>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = "An error occurred while retrieving user information.",
+                    Message = ex.Message,
                     Data = null,
                     ResponsedAt = DateTime.UtcNow
                 };

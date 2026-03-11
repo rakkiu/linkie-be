@@ -6,6 +6,11 @@ namespace Domain.Interface
     public interface IEventRepository
     {
         Task<List<Event>> GetByStatusAsync(EventStatus status, CancellationToken ct = default);
+        Task<List<Event>> GetAllAsync(CancellationToken ct = default);
         Task<Event?> GetByIdAsync(Guid id, CancellationToken ct = default);
+        Task AddAsync(Event @event, CancellationToken ct = default);
+        Task UpdateAsync(Event @event, CancellationToken ct = default);
+        Task DeleteAsync(Event @event, CancellationToken ct = default);
+        Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
 }
