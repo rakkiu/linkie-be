@@ -2,7 +2,7 @@ namespace Domain.Enums
 {
     public enum EventStatus
     {
-        Upcoming, 
+        Upcoming,
         Ongoing,
         Finished
     }

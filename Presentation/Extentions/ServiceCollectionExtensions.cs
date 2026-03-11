@@ -76,16 +76,17 @@ namespace Presentation.Extentions
                             RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
                         };
-                        // Allow SignalR to receive JWT from query string (?access_token=...)
+                        // Allow SignalR to pass JWT via query string (?access_token=...)
                         options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
                         {
-                            OnMessageReceived = context =>
+                            OnMessageReceived = ctx =>
                             {
-                                var accessToken = context.Request.Query["access_token"];
-                                var path = context.HttpContext.Request.Path;
-                                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                                var accessToken = ctx.Request.Query["access_token"];
+                                var path = ctx.HttpContext.Request.Path;
+                                if (!string.IsNullOrEmpty(accessToken) &&
+                                    path.StartsWithSegments("/hubs"))
                                 {
-                                    context.Token = accessToken;
+                                    ctx.Token = accessToken;
                                 }
                                 return Task.CompletedTask;
                             }

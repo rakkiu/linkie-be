@@ -48,8 +48,8 @@ namespace Infrastructure.Seed
                     StartTime = new DateTime(2026, 3, 1, 18, 0, 0, DateTimeKind.Utc),
                     EndTime = new DateTime(2026, 3, 1, 23, 59, 0, DateTimeKind.Utc),
                     Location = "TP. Hồ Chí Minh",
-                    Status = EventStatus.Ongoing,
-                    CreatedAt = DateTime.UtcNow,
+                    Status = EventStatus.Upcoming,
+                    CreatedAt = DateTime.UtcNow
                 });
             }
 

@@ -6,25 +6,25 @@ namespace Presentation.Hubs
     [Authorize]
     public class WishwallHub : Hub
     {
-        // Staff joins a group to receive pending messages for an event
-        public async Task JoinStaff(string eventId)
-            => await Groups.AddToGroupAsync(Context.ConnectionId, $"staff-{eventId}");
-
-        public async Task LeaveStaff(string eventId)
-            => await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"staff-{eventId}");
-
-        // Attendees join to see approved messages on the wishwall feed
+        // Client calls this to subscribe to approved messages for a given event
         public async Task JoinEvent(string eventId)
-            => await Groups.AddToGroupAsync(Context.ConnectionId, $"event-{eventId}");
+            => await Groups.AddToGroupAsync(Context.ConnectionId, $"event:{eventId}");
 
         public async Task LeaveEvent(string eventId)
-            => await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"event-{eventId}");
+            => await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"event:{eventId}");
 
-        // LED screen joins to receive display commands
+        // Staff joins a staff-only channel to receive pending-review notifications
+        public async Task JoinStaff(string eventId)
+            => await Groups.AddToGroupAsync(Context.ConnectionId, $"staff:{eventId}");
+
+        public async Task LeaveStaff(string eventId)
+            => await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"staff:{eventId}");
+
+        // LED screen joins a dedicated group; receives LedDisplay events pushed by organizer
         public async Task JoinLed(string eventId)
-            => await Groups.AddToGroupAsync(Context.ConnectionId, $"led-{eventId}");
+            => await Groups.AddToGroupAsync(Context.ConnectionId, $"led:{eventId}");
 
         public async Task LeaveLed(string eventId)
-            => await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"led-{eventId}");
+            => await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"led:{eventId}");
     }
 }

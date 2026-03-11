@@ -12,7 +12,10 @@ namespace Application.Usecase.Wishwall.SendMessage
         private readonly IEventRepository _eventRepo;
         private readonly IWishwallNotifier _notifier;
 
-        public SendWishwallMessageHandler(IWishwallRepository repo, IEventRepository eventRepo, IWishwallNotifier notifier)
+        public SendWishwallMessageHandler(
+            IWishwallRepository repo,
+            IEventRepository eventRepo,
+            IWishwallNotifier notifier)
         {
             _repo = repo;
             _eventRepo = eventRepo;
@@ -43,10 +46,22 @@ namespace Application.Usecase.Wishwall.SendMessage
             await _repo.AddAsync(message, cancellationToken);
             await _repo.SaveChangesAsync(cancellationToken);
 
-            // Notify staff in real-time about new pending message
-            await _notifier.NotifyNewPendingAsync(request.EventId, message.Id, message.Message, sentiment.ToString(), message.CreatedAt);
-            // Notify the sender that their message is pending moderation
-            await _notifier.NotifyUserPendingAsync(request.UserId.ToString(), message.Id, message.Message, message.CreatedAt);
+            // Notify the sender their message is queued for approval
+            await _notifier.NotifyMessagePendingAsync(request.UserId, new
+            {
+                id = message.Id,
+                message = message.Message,
+                createdAt = message.CreatedAt
+            });
+
+            // Notify staff there is a new message to review
+            await _notifier.NotifyStaffNewPendingAsync(request.EventId, new
+            {
+                id = message.Id,
+                message = message.Message,
+                sentiment = sentiment.ToString(),
+                createdAt = message.CreatedAt
+            });
 
             return true;
         }

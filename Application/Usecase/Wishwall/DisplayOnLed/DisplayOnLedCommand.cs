@@ -2,5 +2,8 @@ using MediatR;
 
 namespace Application.Usecase.Wishwall.DisplayOnLed
 {
-    public record DisplayOnLedCommand(Guid EventId, Guid MessageId) : IRequest<bool>;
+    /// <summary>
+    /// Pushes an already-approved wishwall message to the LED screen group for the given event.
+    /// </summary>
+    public record DisplayOnLedCommand(Guid MessageId) : IRequest<bool>;
 }

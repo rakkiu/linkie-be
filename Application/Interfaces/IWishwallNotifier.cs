@@ -2,16 +2,16 @@ namespace Application.Interfaces
 {
     public interface IWishwallNotifier
     {
-        // Notify staff group of a new pending message
-        Task NotifyNewPendingAsync(Guid eventId, Guid messageId, string message, string sentiment, DateTime createdAt);
+        // Notify the sender that their message is pending approval
+        Task NotifyMessagePendingAsync(Guid userId, object payload);
 
-        // Notify attendee group that a message was approved (shows on public wishwall)
-        Task NotifyMessageApprovedAsync(Guid eventId, Guid messageId, string userName, string message, string sentiment, DateTime createdAt);
+        // Broadcast an approved message to all viewers of the event
+        Task BroadcastApprovedMessageAsync(Guid eventId, object payload);
 
-        // Notify LED group to display a message on screen
-        Task NotifyLedDisplayAsync(Guid eventId, Guid messageId, string userName, string message, string sentiment, DateTime createdAt);
+        // Notify staff that a new message is pending review
+        Task NotifyStaffNewPendingAsync(Guid eventId, object payload);
 
-        // Notify the specific user that their message is pending moderation
-        Task NotifyUserPendingAsync(string userId, Guid messageId, string message, DateTime createdAt);
+        // Push a specific message to the LED screen group
+        Task DisplayOnLedAsync(Guid eventId, object payload);
     }
 }

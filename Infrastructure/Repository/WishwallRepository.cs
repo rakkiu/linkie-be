@@ -27,10 +27,10 @@ namespace Infrastructure.Repository
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync(ct);
 
-        public async Task<WishwallMessage?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        public async Task<WishwallMessage?> GetByIdAsync(Guid messageId, CancellationToken ct = default)
             => await _db.WishwallMessages
                 .Include(m => m.User)
-                .FirstOrDefaultAsync(m => m.Id == id, ct);
+                .FirstOrDefaultAsync(m => m.Id == messageId, ct);
 
         public async Task AddAsync(WishwallMessage message, CancellationToken ct = default)
             => await _db.WishwallMessages.AddAsync(message, ct);

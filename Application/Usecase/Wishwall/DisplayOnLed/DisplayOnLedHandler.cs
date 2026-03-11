@@ -10,7 +10,10 @@ namespace Application.Usecase.Wishwall.DisplayOnLed
         private readonly IWishwallNotifier _notifier;
         private readonly IEncryptionService _encryption;
 
-        public DisplayOnLedHandler(IWishwallRepository repo, IWishwallNotifier notifier, IEncryptionService encryption)
+        public DisplayOnLedHandler(
+            IWishwallRepository repo,
+            IWishwallNotifier notifier,
+            IEncryptionService encryption)
         {
             _repo = repo;
             _notifier = notifier;
@@ -20,22 +23,26 @@ namespace Application.Usecase.Wishwall.DisplayOnLed
         public async Task<bool> Handle(DisplayOnLedCommand request, CancellationToken cancellationToken)
         {
             var message = await _repo.GetByIdAsync(request.MessageId, cancellationToken);
-            if (message == null || message.EventId != request.EventId)
+            if (message == null)
                 throw new KeyNotFoundException("Message not found.");
 
-            // Auto-approve if not already approved
             if (!message.IsApproved)
+                throw new InvalidOperationException("Only approved messages can be displayed on the LED screen.");
+
+            var userName = message.User != null
+                ? _encryption.Decrypt(message.User.Name)
+                : "Anonymous";
+
+            var payload = new
             {
-                message.IsApproved = true;
-                await _repo.SaveChangesAsync(cancellationToken);
-            }
+                id = message.Id,
+                userName,
+                message = message.Message,
+                sentiment = message.Sentiment.ToString(),
+                createdAt = message.CreatedAt
+            };
 
-            var userName = message.User != null ? _encryption.Decrypt(message.User.Name) : "Anonymous";
-
-            // Broadcast to LED screen group
-            await _notifier.NotifyLedDisplayAsync(
-                request.EventId, message.Id, userName,
-                message.Message, message.Sentiment.ToString(), message.CreatedAt);
+            await _notifier.DisplayOnLedAsync(message.EventId, payload);
 
             return true;
         }
