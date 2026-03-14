@@ -20,14 +20,14 @@ namespace Application.Usecase.EventManagement.GetEventById
                 Id = @event.Id,
                 Name = @event.Name,
                 Description = @event.Description,
-                StartTime = new DateTimeOffset(@event.StartTime, TimeSpan.Zero),
-                EndTime = new DateTimeOffset(@event.EndTime, TimeSpan.Zero),
+                StartTime = new DateTimeOffset(DateTime.SpecifyKind(@event.StartTime, DateTimeKind.Utc)),
+                EndTime = new DateTimeOffset(DateTime.SpecifyKind(@event.EndTime, DateTimeKind.Utc)),
                 Location = @event.Location,
                 ThumbnailUrl = @event.ThumbnailUrl,
                 MaxParticipants = @event.MaxParticipants,
                 IsWishwallEnabled = @event.IsWishwallEnabled,
                 Status = @event.Status.ToString(),
-                CreatedAt = new DateTimeOffset(@event.CreatedAt, TimeSpan.Zero)
+                CreatedAt = new DateTimeOffset(DateTime.SpecifyKind(@event.CreatedAt, DateTimeKind.Utc))
             };
         }
     }

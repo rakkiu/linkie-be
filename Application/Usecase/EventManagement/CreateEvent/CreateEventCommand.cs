@@ -11,6 +11,7 @@ namespace Application.Usecase.EventManagement.CreateEvent
         string? Location,
         int MaxParticipants,
         bool IsWishwallEnabled,
+        EventStatus Status,
         string? ThumbnailUrl
     ) : IRequest<CreateEventResult>;
 
