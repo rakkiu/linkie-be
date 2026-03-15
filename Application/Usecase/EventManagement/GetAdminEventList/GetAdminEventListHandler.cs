@@ -19,13 +19,13 @@ namespace Application.Usecase.EventManagement.GetAdminEventList
                 e.Id,
                 e.Name,
                 e.ThumbnailUrl,
-                new DateTimeOffset(e.StartTime, TimeSpan.Zero),
-                new DateTimeOffset(e.EndTime, TimeSpan.Zero),
+                new DateTimeOffset(DateTime.SpecifyKind(e.StartTime, DateTimeKind.Utc)),
+                new DateTimeOffset(DateTime.SpecifyKind(e.EndTime, DateTimeKind.Utc)),
                 e.Location,
                 e.MaxParticipants,
                 e.IsWishwallEnabled,
                 e.Status,
-                new DateTimeOffset(e.CreatedAt, TimeSpan.Zero)
+                new DateTimeOffset(DateTime.SpecifyKind(e.CreatedAt, DateTimeKind.Utc))
             )).ToList();
         }
     }

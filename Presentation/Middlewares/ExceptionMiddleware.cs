@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using Presentation.Common;
 using System.Net;
 using System.Text.Json;

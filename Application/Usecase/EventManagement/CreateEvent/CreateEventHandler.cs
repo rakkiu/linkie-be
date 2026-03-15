@@ -27,7 +27,7 @@ namespace Application.Usecase.EventManagement.CreateEvent
                 MaxParticipants = request.MaxParticipants,
                 IsWishwallEnabled = request.IsWishwallEnabled,
                 ThumbnailUrl = request.ThumbnailUrl,
-                Status = EventStatus.Upcoming,
+                Status = request.Status,
                 CreatedAt = DateTime.UtcNow
             };
 

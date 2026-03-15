@@ -25,12 +25,12 @@ namespace Application.Usecase.EventManagement.GetEvents
                 Id = e.Id,
                 Name = e.Name,
                 Description = e.Description,
-                StartTime = new DateTimeOffset(e.StartTime, TimeSpan.Zero),
-                EndTime = new DateTimeOffset(e.EndTime, TimeSpan.Zero),
+                StartTime = new DateTimeOffset(DateTime.SpecifyKind(e.StartTime, DateTimeKind.Utc)),
+                EndTime = new DateTimeOffset(DateTime.SpecifyKind(e.EndTime, DateTimeKind.Utc)),
                 Location = e.Location,
                 Status = e.Status.ToString(),
                 ThumbnailUrl = e.ThumbnailUrl,
-                CreatedAt = new DateTimeOffset(e.CreatedAt, TimeSpan.Zero)
+                CreatedAt = new DateTimeOffset(DateTime.SpecifyKind(e.CreatedAt, DateTimeKind.Utc))
             }).ToList();
         }
     }

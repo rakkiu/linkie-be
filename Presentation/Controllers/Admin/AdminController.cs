@@ -11,10 +11,11 @@ using Application.Usecase.EventManagement.CreateEvent;
 using Application.Usecase.EventManagement.DeleteEvent;
 using Application.Usecase.EventManagement.GetAdminEventList;
 using Application.Usecase.EventManagement.UpdateEvent;
+using Application.Interfaces;
 using Domain.Enums;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MediatR;
 using Presentation.Common;
 
 namespace Presentation.Controllers.Admin
@@ -25,8 +26,13 @@ namespace Presentation.Controllers.Admin
     public class AdminController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ICloudinaryService _cloudinary;
 
-        public AdminController(IMediator mediator) => _mediator = mediator;
+        public AdminController(IMediator mediator, ICloudinaryService cloudinary)
+        {
+            _mediator = mediator;
+            _cloudinary = cloudinary;
+        }
 
         // ──────────────────────────────────────────────────────────────
         // EVENT MANAGEMENT
@@ -49,13 +55,21 @@ namespace Presentation.Controllers.Admin
 
         // POST /api/admin/events
         [HttpPost("events")]
-        [Consumes("application/json")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(ApiResponse<CreateEventResult>), 201)]
         public async Task<ActionResult<ApiResponse<CreateEventResult>>> CreateEvent(
-            [FromBody] CreateEventRequest req,
+            [FromForm] CreateEventRequest req,
+            IFormFile? thumbnail,
             CancellationToken ct)
         {
-            var command = new CreateEventCommand(req.Name, req.Description, req.StartTime, req.EndTime, req.Location, req.MaxParticipants, req.IsWishwallEnabled, req.ThumbnailUrl);
+            string? thumbnailUrl = req.ThumbnailUrl;
+            if (thumbnail != null && thumbnail.Length > 0)
+            {
+                await using var stream = thumbnail.OpenReadStream();
+                thumbnailUrl = await _cloudinary.UploadImageAsync(stream, thumbnail.FileName, ct);
+            }
+
+            var command = new CreateEventCommand(req.Name, req.Description, req.StartTime, req.EndTime, req.Location, req.MaxParticipants, req.IsWishwallEnabled, req.Status, thumbnailUrl);
             var result = await _mediator.Send(command, ct);
             return StatusCode(201, new ApiResponse<CreateEventResult>
             {
@@ -68,14 +82,22 @@ namespace Presentation.Controllers.Admin
 
         // PUT /api/admin/events/{id}
         [HttpPut("events/{id:guid}")]
-        [Consumes("application/json")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(ApiResponse<UpdateEventResult>), 200)]
         public async Task<ActionResult<ApiResponse<UpdateEventResult>>> UpdateEvent(
             Guid id,
-            [FromBody] UpdateEventRequest req,
+            [FromForm] UpdateEventRequest req,
+            IFormFile? thumbnail,
             CancellationToken ct)
         {
-            var command = new UpdateEventCommand(id, req.Name, req.Description, req.StartTime, req.EndTime, req.Location, req.MaxParticipants, req.IsWishwallEnabled, req.Status, req.ThumbnailUrl);
+            string? thumbnailUrl = req.ThumbnailUrl;
+            if (thumbnail != null && thumbnail.Length > 0)
+            {
+                await using var stream = thumbnail.OpenReadStream();
+                thumbnailUrl = await _cloudinary.UploadImageAsync(stream, thumbnail.FileName, ct);
+            }
+
+            var command = new UpdateEventCommand(id, req.Name, req.Description, req.StartTime, req.EndTime, req.Location, req.MaxParticipants, req.IsWishwallEnabled, req.Status, thumbnailUrl);
             var result = await _mediator.Send(command, ct);
             return Ok(new ApiResponse<UpdateEventResult>
             {
