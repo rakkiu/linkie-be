@@ -3,6 +3,7 @@ using Application.Usecase.Admin.FrameAnalytics;
 using Application.Usecase.Admin.Sentiment;
 using Application.Usecase.Admin.SystemHealth;
 using Application.Usecase.Admin.Wishwall;
+using Application.Usecase.Admin.Report;
 using Application.Usecase.ArFrame.DeleteFrame;
 using Application.Usecase.ArFrame.GetFrames;
 using Application.Usecase.ArFrame.ToggleFrame;
@@ -278,6 +279,37 @@ namespace Presentation.Controllers.Admin
                 {
                     StatusCode = 500,
                     Message = "An error occurred while retrieving system health.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // FR-06: GET /api/admin/events/{eventId}/report
+        [HttpGet("events/{eventId:guid}/report")]
+        [ProducesResponseType(typeof(ApiResponse<EventReportDto>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<EventReportDto>>> GetEventReport(
+            Guid eventId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _mediator.Send(new GetEventReportQuery(eventId), cancellationToken);
+                return Ok(new ApiResponse<EventReportDto>
+                {
+                    StatusCode = 200,
+                    Message = "Event report retrieved",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving event report.",
                     Data = null,
                     ResponsedAt = DateTime.UtcNow
                 });
