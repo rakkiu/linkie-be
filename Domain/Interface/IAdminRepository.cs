@@ -25,5 +25,9 @@ namespace Domain.Interface
 
         // System health ping (FR-05)
         Task<bool> PingAsync(CancellationToken ct = default);
+
+        // Fan Insights (FR-07)
+        Task<List<UserFanInsightDto>> GetFanInsightsAsync(Guid eventId, CancellationToken ct = default);
+        Task<FanProfileDto?> GetFanProfileAsync(Guid eventId, Guid userId, CancellationToken ct = default);
     }
 }

@@ -4,6 +4,7 @@ using Application.Usecase.Admin.Sentiment;
 using Application.Usecase.Admin.SystemHealth;
 using Application.Usecase.Admin.Wishwall;
 using Application.Usecase.Admin.Report;
+using Application.Usecase.Admin.FanInsights;
 using Application.Usecase.ArFrame.DeleteFrame;
 using Application.Usecase.ArFrame.GetFrames;
 using Application.Usecase.ArFrame.ToggleFrame;
@@ -13,6 +14,7 @@ using Application.Usecase.EventManagement.DeleteEvent;
 using Application.Usecase.EventManagement.GetAdminEventList;
 using Application.Usecase.EventManagement.UpdateEvent;
 using Application.Interfaces;
+using Domain.Interface;
 using Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -315,6 +317,80 @@ namespace Presentation.Controllers.Admin
                 });
             }
         }
+
+        // FR-07: GET /api/admin/events/{eventId}/fan-insights
+        [HttpGet("events/{eventId:guid}/fan-insights")]
+        [ProducesResponseType(typeof(ApiResponse<List<UserFanInsightDto>>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<List<UserFanInsightDto>>>> GetFanInsights(
+            Guid eventId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _mediator.Send(new GetFanInsightsQuery(eventId), cancellationToken);
+                return Ok(new ApiResponse<List<UserFanInsightDto>>
+                {
+                    StatusCode = 200,
+                    Message = "Fan insights retrieved",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving fan insights.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // FR-08: GET /api/admin/events/{eventId}/fan-insights/{userId:guid}
+        [HttpGet("events/{eventId:guid}/fan-insights/{userId:guid}")]
+        [ProducesResponseType(typeof(ApiResponse<FanProfileDto>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<FanProfileDto>>> GetFanProfile(
+            Guid eventId,
+            Guid userId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _mediator.Send(new GetFanProfileQuery(eventId, userId), cancellationToken);
+                if (result == null)
+                    return NotFound(new ApiResponse<object>
+                    {
+                        StatusCode = 404,
+                        Message = "Fan profile not found.",
+                        Data = null,
+                        ResponsedAt = DateTime.UtcNow
+                    });
+
+                return Ok(new ApiResponse<FanProfileDto>
+                {
+                    StatusCode = 200,
+                    Message = "Fan profile retrieved",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving fan profile.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
         // ──────────────────────────────────────────────────────────────
         // AR FRAME MANAGEMENT
         // ──────────────────────────────────────────────────────────────

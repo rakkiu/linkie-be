@@ -17,6 +17,7 @@ namespace Infrastructure.Seed
                 (Role: UserRole.Organizer, Name: "Organizer User", Email: "organizer@linkie.com", Password: "Organizer@123"),
                 (Role: UserRole.Staff,     Name: "Staff User",     Email: "staff@linkie.com",     Password: "Staff@123"),
                 (Role: UserRole.Attendee,  Name: "Attendee User",  Email: "attendee@linkie.com",  Password: "Attendee@123"),
+                (Role: UserRole.Attendee,  Name: "Hiểu Nhân",      Email: "attendee2@linkie.com", Password: "Attendee@123"),
                 (Role: UserRole.LED,       Name: "LED User",       Email: "led@linkie.com",       Password: "Led@123"),
             };
 
