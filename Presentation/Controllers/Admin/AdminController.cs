@@ -1,9 +1,10 @@
 using Application.Usecase.Admin.Dashboard;
+using Application.Usecase.Admin.FanInsights;
 using Application.Usecase.Admin.FrameAnalytics;
+using Application.Usecase.Admin.Report;
 using Application.Usecase.Admin.Sentiment;
 using Application.Usecase.Admin.SystemHealth;
 using Application.Usecase.Admin.Wishwall;
-using Application.Usecase.Admin.Report;
 using Application.Usecase.Admin.FanInsights;
 using Application.Usecase.ArFrame.DeleteFrame;
 using Application.Usecase.ArFrame.GetFrames;
@@ -316,6 +317,38 @@ namespace Presentation.Controllers.Admin
                     ResponsedAt = DateTime.UtcNow
                 });
             }
+        }
+
+        [HttpGet("events/{eventId:guid}/dashboard-summary")]
+        [ProducesResponseType(typeof(ApiResponse<DashboardSummaryDto>), 200)]
+        public async Task<ActionResult<ApiResponse<DashboardSummaryDto>>> GetDashboardSummary(
+            Guid eventId,
+            CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(new GetDashboardSummaryQuery(eventId), cancellationToken);
+            return Ok(new ApiResponse<DashboardSummaryDto>
+            {
+                StatusCode = 200,
+                Message = "Dashboard summary retrieved successfully.",
+                Data = result,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+
+        [HttpPost("events/{eventId:guid}/wishwall/clear-led")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        public async Task<ActionResult<ApiResponse<object>>> ClearLed(
+            Guid eventId,
+            CancellationToken cancellationToken)
+        {
+            await _mediator.Send(new ClearLedMessagesCommand(eventId), cancellationToken);
+            return Ok(new ApiResponse<object>
+            {
+                StatusCode = 200,
+                Message = "LED messages cleared successfully.",
+                Data = null,
+                ResponsedAt = DateTime.UtcNow
+            });
         }
 
         // FR-07: GET /api/admin/events/{eventId}/fan-insights

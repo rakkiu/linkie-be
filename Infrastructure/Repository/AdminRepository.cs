@@ -18,8 +18,14 @@ namespace Infrastructure.Repository
             _encryptionService = encryptionService;
         }
 
-        public Task<int> GetParticipantCountAsync(Guid eventId, CancellationToken ct = default)
-            => _db.EventParticipants.CountAsync(p => p.EventId == eventId, ct);
+        public async Task<int> GetParticipantCountAsync(Guid eventId, CancellationToken ct = default)
+        {
+            var p1 = await _db.EventParticipants.Where(p => p.EventId == eventId).Select(p => p.UserId).ToListAsync(ct);
+            var p2 = await _db.FrameUsages.Where(p => p.EventId == eventId).Select(p => p.UserId).ToListAsync(ct);
+            var p3 = await _db.WishwallMessages.Where(p => p.EventId == eventId).Select(p => p.UserId).ToListAsync(ct);
+
+            return p1.Union(p2).Union(p3).Distinct().Count();
+        }
 
         public Task<int> GetMessageCountAsync(Guid eventId, CancellationToken ct = default)
             => _db.WishwallMessages.CountAsync(m => m.EventId == eventId, ct);
@@ -27,15 +33,30 @@ namespace Infrastructure.Repository
         public Task<int> GetFrameUsageCountAsync(Guid eventId, CancellationToken ct = default)
             => _db.FrameUsages.CountAsync(f => f.EventId == eventId, ct);
 
+        public Task<int> GetPhotographerCountAsync(Guid eventId, CancellationToken ct = default)
+            => _db.FrameUsages.Where(f => f.EventId == eventId).Select(f => f.UserId).Distinct().CountAsync(ct);
+
         public async Task<Dictionary<WishwallSentiment, int>> GetSentimentSummaryAsync(Guid eventId, CancellationToken ct = default)
         {
-            var rows = await _db.WishwallMessages
-                .Where(m => m.EventId == eventId)
+            // Lấy các tin nhắn đã duyệt theo sentiment thực tế
+            var approvedRows = await _db.WishwallMessages
+                .Where(m => m.EventId == eventId && m.IsApproved && !m.IsHidden)
                 .GroupBy(m => m.Sentiment)
                 .Select(g => new { Sentiment = g.Key, Count = g.Count() })
                 .ToListAsync(ct);
 
-            return rows.ToDictionary(x => x.Sentiment, x => x.Count);
+            // Đếm các tin nhắn bị ẩn (Rejected) hoặc có sentiment Negative
+            var rejectedCount = await _db.WishwallMessages
+                .CountAsync(m => m.EventId == eventId && m.IsHidden, ct);
+
+            var result = approvedRows.ToDictionary(x => x.Sentiment, x => x.Count);
+
+            if (!result.ContainsKey(WishwallSentiment.Negative))
+                result[WishwallSentiment.Negative] = 0;
+            
+            result[WishwallSentiment.Negative] += rejectedCount;
+
+            return result;
         }
 
         public async Task<(Guid FrameId, string FrameName, int Usage)?> GetTopFrameAsync(Guid eventId, CancellationToken ct = default)
@@ -74,7 +95,7 @@ namespace Infrastructure.Repository
         public Task<List<WishwallMessage>> GetPagedWishwallMessagesAsync(Guid eventId, int page, int pageSize, CancellationToken ct = default)
             => _db.WishwallMessages
                 .Include(m => m.User)
-                .Where(m => m.EventId == eventId)
+                .Where(m => m.EventId == eventId && m.IsApproved && !m.IsHidden)
                 .OrderByDescending(m => m.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -140,7 +161,7 @@ namespace Infrastructure.Repository
                 
                 var engagementScore = stat?.EngagementScore ?? (totalPhotos * 2 + totalMessages);
 
-                result.Add(new UserFanInsightDto
+                result.Add(new UserFanInsightDto()
                 {
                     UserId = user.Id,
                     Name = _encryptionService.Decrypt(user.Name),
@@ -162,7 +183,7 @@ namespace Infrastructure.Repository
 
             if (user == null) return null;
 
-            var profile = new FanProfileDto
+            var profile = new FanProfileDto()
             {
                 UserId = userId,
                 Name = _encryptionService.Decrypt(user.Name)
@@ -198,6 +219,20 @@ namespace Infrastructure.Repository
                 .ToListAsync(ct);
 
             return profile;
+        }
+
+        public async Task ClearLedMessagesAsync(Guid eventId, CancellationToken ct = default)
+        {
+            var messages = await _db.WishwallMessages
+                .Where(m => m.EventId == eventId && m.IsApproved && !m.IsDisplayedOnLed)
+                .ToListAsync(ct);
+
+            foreach (var m in messages)
+            {
+                m.IsDisplayedOnLed = true;
+            }
+
+            await _db.SaveChangesAsync(ct);
         }
     }
 }

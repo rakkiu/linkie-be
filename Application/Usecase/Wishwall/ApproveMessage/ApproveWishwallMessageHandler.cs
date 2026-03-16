@@ -30,6 +30,7 @@ namespace Application.Usecase.Wishwall.ApproveMessage
                 return true; // already approved — idempotent
 
             message.IsApproved = true;
+            message.Sentiment = request.Sentiment;
             await _repo.SaveChangesAsync(cancellationToken);
 
             var userName = message.User != null
