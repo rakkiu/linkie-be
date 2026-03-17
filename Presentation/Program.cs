@@ -30,9 +30,8 @@ namespace Presentation
             {
                 options.AddPolicy("AllowFrontend",
                     b => b.WithOrigins(
-                              "http://localhost:5173",
-                              "https://localhost:5173",
-                              "http://localhost:3000")
+                              "https://linkie-fe.onrender.com",
+                              "http://localhost:5173")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials());
