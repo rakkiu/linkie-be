@@ -15,6 +15,8 @@ namespace Presentation
             // Fix lỗi DateTime Unspecified của PostgreSQL
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
+            LoadEnvFile();
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
@@ -84,6 +86,42 @@ namespace Presentation
             app.MapHub<WishwallHub>("/hubs/wishwall");
 
             app.Run();
+        }
+
+        private static void LoadEnvFile()
+        {
+            var baseDir = AppContext.BaseDirectory;
+            var current = new DirectoryInfo(baseDir);
+
+            while (current != null)
+            {
+                var envPath = Path.Combine(current.FullName, ".env");
+                if (File.Exists(envPath))
+                {
+                    foreach (var rawLine in File.ReadAllLines(envPath))
+                    {
+                        var line = rawLine.Trim();
+                        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+                        {
+                            continue;
+                        }
+
+                        var separatorIndex = line.IndexOf('=');
+                        if (separatorIndex <= 0)
+                        {
+                            continue;
+                        }
+
+                        var key = line[..separatorIndex].Trim();
+                        var value = line[(separatorIndex + 1)..].Trim().Trim('"');
+                        Environment.SetEnvironmentVariable(key, value);
+                    }
+
+                    break;
+                }
+
+                current = current.Parent;
+            }
         }
     }
 }
