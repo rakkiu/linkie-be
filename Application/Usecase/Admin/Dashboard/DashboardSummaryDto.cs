@@ -1,4 +1,5 @@
 using Domain.Enums;
+using Application.Model.WishwallAi;
 
 namespace Application.Usecase.Admin.Dashboard
 {
@@ -11,6 +12,7 @@ namespace Application.Usecase.Admin.Dashboard
         public List<FrameStatsDto> FrameUsageStats { get; set; } = new();
         public Dictionary<WishwallSentiment, int> SentimentSummary { get; set; } = new();
         public List<LiveMessageDto> RecentLiveMessages { get; set; } = new();
+        public WishwallAiSummaryDto AiSummary { get; set; } = new();
     }
 
     public class FrameStatsDto

@@ -13,6 +13,7 @@ namespace Infrastructure.Identity
         public DbSet<User> Users => Set<User>();
         public DbSet<Event> Events => Set<Event>();
         public DbSet<WishwallMessage> WishwallMessages => Set<WishwallMessage>();
+        public DbSet<WishwallAiLog> WishwallAiLogs => Set<WishwallAiLog>();
         public DbSet<ArFrame> ArFrames => Set<ArFrame>();
         public DbSet<FrameUsage> FrameUsages => Set<FrameUsage>();
         public DbSet<WishwallKeyword> WishwallKeywords => Set<WishwallKeyword>();

@@ -35,6 +35,9 @@ namespace Infrastructure.Repository
         public async Task AddAsync(WishwallMessage message, CancellationToken ct = default)
             => await _db.WishwallMessages.AddAsync(message, ct);
 
+        public async Task AddAiLogAsync(WishwallAiLog log, CancellationToken ct = default)
+            => await _db.WishwallAiLogs.AddAsync(log, ct);
+
         public Task<int> SaveChangesAsync(CancellationToken ct = default)
             => _db.SaveChangesAsync(ct);
     }

@@ -1,5 +1,7 @@
 using Application.Interfaces;
 using Domain.Interface;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 using MediatR;
 
 namespace Application.Usecase.Wishwall.GetPendingMessages
@@ -22,15 +24,31 @@ namespace Application.Usecase.Wishwall.GetPendingMessages
         {
             var messages = await _repo.GetPendingByEventIdAsync(request.EventId, cancellationToken);
 
-            return messages.Select(m => new PendingWishwallMessageDto
+            return messages
+                .OrderBy(m => GetAiPriority(m.AiLabel))
+                .ThenByDescending(m => m.CreatedAt)
+                .Select(m => new PendingWishwallMessageDto
             {
                 Id = m.Id,
                 UserId = m.UserId,
                 UserName = m.User != null ? _encryption.Decrypt(m.User.Name) : "Anonymous",
                 Message = m.Message,
                 Sentiment = m.Sentiment.ToString(),
+                AiLabel = m.AiLabel,
+                AiReason = m.AiReason,
                 CreatedAt = m.CreatedAt
             }).ToList();
+        }
+
+        private static int GetAiPriority(string? label)
+        {
+            return label switch
+            {
+                "BLOCK" => 0,
+                "WARNING" => 1,
+                "ALLOW" => 2,
+                _ => 3
+            };
         }
     }
 }

@@ -13,6 +13,7 @@ using Infrastructure.Services;
 using Infrastructure.Shared;
 using Application.Usecase.Auth.Login;   // Add this
 using Presentation.Services;
+using Infrastructure.Services;
 
 namespace Presentation.Extentions
 {
@@ -50,6 +51,8 @@ namespace Presentation.Extentions
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
             services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
             services.AddScoped<IWishwallNotifier, WishwallNotifier>(); // Register WishwallNotifier (SignalR)
+            services.AddScoped<IWishwallAiModerationService, WishwallAiModerationService>();
+            services.AddHttpClient("Gemini");
 
             // 🔹 MediatR
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly));
