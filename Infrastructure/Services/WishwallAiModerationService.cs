@@ -66,6 +66,10 @@ namespace Infrastructure.Services
 
                 _logger.LogInformation("[AI] Processing message {MessageId}: '{Message}'", messageId, message);
 
+                var msg = await db.WishwallMessages
+                    .Include(m => m.User)
+                    .FirstOrDefaultAsync(m => m.Id == messageId);
+
                 // Khôi phục bộ lọc Fast-Blocked để giảm tải cho API (vì đang bị Quota Error)
                 if (IsFastBlocked(message))
                 {
@@ -73,18 +77,12 @@ namespace Infrastructure.Services
                     reason = "fast:keyword";
                     _logger.LogInformation("[AI] Fast-Blocked by keyword: '{Message}'", message);
                 }
-                else
-                {
-                    var ai = await CallGeminiAsync(message);
-                    label = ai.Label;
-                    reason = ai.Reason;
-                    source = ai.Source;
-                    _logger.LogInformation("[AI] Gemini result: Label={Label}, Reason={Reason}", label, reason);
-                }
-
-                var msg = await db.WishwallMessages
-                    .Include(m => m.User)
-                    .FirstOrDefaultAsync(m => m.Id == messageId);
+                // Thử gọi AI (Gemini hoặc backup sang Groq)
+                var ai = await ModerateWithAiAsync(messageId, message, msg?.EventId ?? Guid.Empty);
+                label = ai.Label;
+                reason = ai.Reason;
+                source = ai.Source;
+                _logger.LogInformation("[AI] Final result: Label={Label}, Source={Source}", label, source);
 
                 if (msg != null)
                 {
@@ -217,19 +215,20 @@ namespace Infrastructure.Services
             }
 
             var apiKey = _config["Gemini:ApiKey"];
-            var model = "gemini-1.5-flash"; // Trở về model 1.5 vì model 2.0 bị lỗi Quota
             var endpoint = _config["Gemini:Endpoint"];
-            var timeoutMs = _config.GetValue("Gemini:TimeoutMs", 2000);
+            var timeoutMs = _config.GetValue("Gemini:TimeoutMs", 8000);
 
-            if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(model))
+            if (string.IsNullOrWhiteSpace(apiKey))
             {
-                _logger.LogWarning("[AI] Missing API Key or Model Name. Key starts with: {Prefix}", (apiKey ?? "").Take(5).ToString());
-                return ("REVIEW", "ai:missing_key_or_model", "fallback");
+                _logger.LogWarning("[AI] Missing API Key for Gemini.");
+                return ("REVIEW", "ai:missing_key", "fallback");
             }
 
+            // Dùng model từ config, không hardcode nữa
+            var modelName = _config["Gemini:Model"] ?? "gemini-1.5-flash";
             var url = string.IsNullOrWhiteSpace(endpoint)
-                ? $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}"
-                : endpoint.Replace("{MODEL}", model, StringComparison.OrdinalIgnoreCase).Replace("{API_KEY}", apiKey, StringComparison.OrdinalIgnoreCase);
+                ? $"https://generativelanguage.googleapis.com/v1beta/models/{modelName}:generateContent?key={apiKey}"
+                : endpoint.Replace("{MODEL}", modelName, StringComparison.OrdinalIgnoreCase).Replace("{API_KEY}", apiKey, StringComparison.OrdinalIgnoreCase);
 
             var debugUrl = url.Length > 20 ? url.Substring(0, url.Length - 10) + "**********" : url;
             _logger.LogInformation("[AI] Calling Gemini: {Url}", debugUrl);
@@ -266,16 +265,13 @@ namespace Infrastructure.Services
             using var resp = await client.SendAsync(req, cts.Token);
             if (!resp.IsSuccessStatusCode)
             {
-                var errorBody = await resp.Content.ReadAsStringAsync(cts.Token);
-                _logger.LogError("[AI] Gemini API Error (Status {Status}): {Body}", resp.StatusCode, errorBody);
-                
-                if (errorBody.Contains("leaked", StringComparison.OrdinalIgnoreCase))
+                if (resp.StatusCode == HttpStatusCode.TooManyRequests)
                 {
-                    _logger.LogCritical("[AI-SECURITY] YOUR GEMINI API KEY HAS BEEN MARKED AS LEAKED BY GOOGLE. PLEASE REPLACE IT IN appsettings.json IMMEDIATELY.");
+                    _logger.LogWarning("[AI] Gemini Quota Exceeded (429).");
+                    return ("FAIL", "quota_exceeded", "gemini");
                 }
 
-                // Tạm thời không dùng Fallback theo yêu cầu
-                // --> Đã phục hồi lại vì hệ thống gặp lỗi Rate Limit
+                // Với các lỗi khác, dùng Internal Fallback
                 return InternalFallbackScan(message);
             }
 
@@ -289,6 +285,86 @@ namespace Infrastructure.Services
             return (label, "ai:gemini", "gemini");
         }
 
+        private async Task<(string Label, string Reason, string Source)> ModerateWithAiAsync(Guid messageId, string message, Guid eventId)
+        {
+            _logger.LogInformation("[AI-FLOW] Starting moderation for message {MessageId}", messageId);
+
+            // Bước 1: Ưu tiên Bộ lọc Nội bộ (Internal Filter)
+            var internalResult = InternalFallbackScan(message);
+            if (internalResult.Label == "BLOCK")
+            {
+                _logger.LogInformation("[AI-FLOW] Internal Filter BLOCKED message {MessageId}", messageId);
+                return internalResult;
+            }
+
+            // Bước 2: Nếu bộ lọc nội bộ cho qua, mới dùng AI (Groq)
+            _logger.LogInformation("[AI-FLOW] Calling Groq for deeper analysis of message {MessageId}", messageId);
+            var groq = await CallGroqAsync(message);
+            
+            return groq;
+        }
+
+        private async Task<(string Label, string Reason, string Source)> CallGroqAsync(string message)
+        {
+            var apiKey = _config["Groq:ApiKey"];
+            var model = _config["Groq:Model"] ?? "llama-3.3-70b-versatile";
+            var url = _config["Groq:Endpoint"] ?? "https://api.groq.com/openai/v1/chat/completions";
+            var timeoutMs = _config.GetValue("Groq:TimeoutMs", 5000);
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                _logger.LogWarning("[AI] Missing API Key for Groq.");
+                return InternalFallbackScan(message);
+            }
+
+            var prompt = BuildCompactPrompt(message);
+            var payload = new
+            {
+                model = model,
+                messages = new[]
+                {
+                    new { role = "user", content = prompt }
+                },
+                temperature = 0.0,
+                max_tokens = 20
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            using var req = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+            req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+            req.Headers.Add("User-Agent", "Linkie-Moderator/1.0");
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+            var client = _httpClientFactory.CreateClient("Groq");
+
+            try 
+            {
+                using var resp = await client.SendAsync(req, cts.Token);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var error = await resp.Content.ReadAsStringAsync(cts.Token);
+                    _logger.LogError("[AI] Groq API Error ({Status}): {Body}", resp.StatusCode, error);
+                    return InternalFallbackScan(message);
+                }
+
+                var body = await resp.Content.ReadAsStringAsync(cts.Token);
+                using var doc = JsonDocument.Parse(body);
+                var text = doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
+                
+                _logger.LogInformation("[AI] Groq Result: '{Text}'", text);
+                var label = ParseLabel(text ?? "");
+                return (label, "ai:groq", "groq");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AI] Groq Call Failed");
+                return InternalFallbackScan(message);
+            }
+        }
+
         private (string Label, string Reason, string Source) InternalFallbackScan(string message)
         {
             var lower = message.ToLowerInvariant();
@@ -299,7 +375,8 @@ namespace Infrastructure.Services
                 "óc", "lợn", "heo", "chó", "cc", "cl", "dm", "dmm", "cmm", "bùi", "cac", "cak", 
                 "vcl", "vkl", "vl", "ngu", "đĩ", "lồn", "cặc", "cút", "mẹ mày", "con chó", "đẻ",
                 "thằng", "mẹ", "dở", "tệ", "kém", "vô dụng", "nát", "rác", "đấm vào tai", "ngáo",
-                "fuck", "shit", "bitch", "asshole", "dick", "pussy", "hỗn độn", "thất vọng", "kém", "súc vật"
+                "fuck", "shit", "bitch", "asshole", "dick", "pussy", "hỗn độn", "thất vọng", "kém", "súc vật",
+                "chán", "không hay", "tệ hại", "xấu", "hát dở"
             };
 
             foreach (var kw in toxicPatterns)
@@ -322,10 +399,10 @@ namespace Infrastructure.Services
             return "BẠN LÀ MỘT CHUYÊN GIA KIỂM DUYỆT NỘI DUNG TIẾNG VIỆT NGHIÊM KHẮC.\n" +
                    "NHIỆM VỤ: Kiểm duyệt lời chúc cho sự kiện công cộng. Duy trì không khí tích cực.\n" +
                    "QUY TẮC:\n" +
-                   "1. CẤM (BLOCK): Các từ chửi bới, tục tĩu (cặc, lồn, đm, vcl...), các từ sỉ nhục động vật (súc vật, chó, lợn, bò...), mỉa mai tiêu cực (hát dở, tổ chức tệ, mớ hỗn độn, thất vọng, kém, ngu, dốt...).\n" +
-                   "2. CẢNH BÁO (WARNING): Teencode khó hiểu, câu hỏi không liên quan.\n" +
-                   "3. CHO PHÉP (ALLOW): Chỉ những lời chúc thật sự tốt đẹp, tích cực, lịch sự.\n" +
-                   "LƯU Ý: Nếu có bất kỳ dấu hiệu tiêu cực nào, hãy BLOCK ngay lập tức. Không được nương tay.\n" +
+                "1. CẤM (BLOCK): Các từ chửi bới, tục tĩu (cặc, lồn, đm, vcl...), các từ sỉ nhục động vật (súc vật, chó, lợn, bò...), mỉa mai tiêu cực hoặc chê bai (hát dở, hát chả hay, tổ chức tệ, mớ hỗn độn, thất vọng, kém, ngu, dốt, xấu, tệ...). BẤT KỲ LỜI CHÊ BAI NÀO VỀ CA SĨ, SỰ KIỆN HOẶC BAN TỔ CHỨC ĐỀU PHẢI BLOCK.\n" +
+                "2. CẢNH BÁO (WARNING): Teencode khó hiểu, câu hỏi không liên quan, nội dung không có ý nghĩa rõ ràng.\n" +
+                "3. CHO PHÉP (ALLOW): Chỉ những lời chúc thật sự tốt đẹp, tích cực, lịch sự mang tính cổ vũ.\n" +
+                "LƯU Ý: Nếu có bất kỳ dấu hiệu tiêu cực, chê bai hoặc thiếu tôn trọng nào, hãy BLOCK ngay lập tức. Không được nương tay.\n" +
                    "Nội dung cần kiểm tra: \"" + message + "\"\n" +
                    "CHỈ TRẢ LỜI DUY NHẤT 1 TỪ (ALLOW, WARNING, hoặc BLOCK):";
         }
