@@ -376,7 +376,7 @@ namespace Infrastructure.Services
                 "vcl", "vkl", "vl", "ngu", "đĩ", "lồn", "cặc", "cút", "mẹ mày", "con chó", "đẻ",
                 "thằng", "mẹ", "dở", "tệ", "kém", "vô dụng", "nát", "rác", "đấm vào tai", "ngáo",
                 "fuck", "shit", "bitch", "asshole", "dick", "pussy", "hỗn độn", "thất vọng", "kém", "súc vật",
-                "chán", "không hay", "tệ hại", "xấu", "hát dở"
+                "chán", "không hay", "tệ hại", "hát dở"
             };
 
             foreach (var kw in toxicPatterns)
