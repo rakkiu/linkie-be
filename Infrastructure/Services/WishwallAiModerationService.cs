@@ -66,6 +66,7 @@ namespace Infrastructure.Services
 
                 _logger.LogInformation("[AI] Processing message {MessageId}: '{Message}'", messageId, message);
 
+                // Khôi phục bộ lọc Fast-Blocked để giảm tải cho API (vì đang bị Quota Error)
                 if (IsFastBlocked(message))
                 {
                     label = "BLOCK";
@@ -91,8 +92,13 @@ namespace Infrastructure.Services
                     msg.AiReason = reason;
 
                     // Sync with sentiment for Frontend display
-                    if (label == "ALLOW") msg.Sentiment = WishwallSentiment.Positive;
-                    else if (label == "BLOCK") msg.Sentiment = WishwallSentiment.Negative;
+                    // Default to Neutral instead of Positive for ALLOW to avoid "NỔI BẬT" everywhere
+                    if (label == "BLOCK") msg.Sentiment = WishwallSentiment.Negative;
+                    else if (label == "ALLOW" && reason == "ai:gemini") 
+                    {
+                        // Temporarily keep Neutral, or we can add logic for Positive later
+                        msg.Sentiment = WishwallSentiment.Neutral; 
+                    }
                     else msg.Sentiment = WishwallSentiment.Neutral;
 
                     if (label == "BLOCK")
@@ -169,15 +175,23 @@ namespace Infrastructure.Services
 
         private bool IsFastBlocked(string message)
         {
-            var lower = message.ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(message)) return false;
+
+            // Normalize to FormC for consistent Vietnamese matching
+            var normalizedMessage = message.Normalize(System.Text.NormalizationForm.FormC);
+            var lower = normalizedMessage.ToLowerInvariant();
 
             var keywords = _config.GetSection("WishwallModeration:FastBlockKeywords").Get<string[]>() ?? Array.Empty<string>();
-            _logger.LogInformation("Loaded {Count} FastBlockKeywords. Testing: '{Message}'. Keywords: [{Keywords}]", keywords.Length, message, string.Join("|", keywords));
+            _logger.LogInformation("[AI-Fast] Testing message: '{Message}'. Keywords Count: {Count}", message, keywords.Length);
+
             foreach (var k in keywords)
             {
-                if (!string.IsNullOrWhiteSpace(k) && lower.Contains(k.Trim().ToLowerInvariant()))
+                if (string.IsNullOrWhiteSpace(k)) continue;
+                
+                var normalizedK = k.Normalize(System.Text.NormalizationForm.FormC).Trim().ToLowerInvariant();
+                if (lower.Contains(normalizedK))
                 {
-                    _logger.LogInformation("MATCH: Keyword '{Keyword}' found in '{Message}'", k, message);
+                    _logger.LogInformation("[AI-Fast] MATCH: Keyword '{Keyword}' found in '{Message}'", k, message);
                     return true;
                 }
             }
@@ -203,7 +217,7 @@ namespace Infrastructure.Services
             }
 
             var apiKey = _config["Gemini:ApiKey"];
-            var model = _config["Gemini:Model"];
+            var model = "gemini-1.5-flash"; // Trở về model 1.5 vì model 2.0 bị lỗi Quota
             var endpoint = _config["Gemini:Endpoint"];
             var timeoutMs = _config.GetValue("Gemini:TimeoutMs", 2000);
 
@@ -214,11 +228,12 @@ namespace Infrastructure.Services
             }
 
             var url = string.IsNullOrWhiteSpace(endpoint)
-                ? $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={apiKey}"
+                ? $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}"
                 : endpoint.Replace("{MODEL}", model, StringComparison.OrdinalIgnoreCase).Replace("{API_KEY}", apiKey, StringComparison.OrdinalIgnoreCase);
 
             var debugUrl = url.Length > 20 ? url.Substring(0, url.Length - 10) + "**********" : url;
             _logger.LogInformation("[AI] Calling Gemini: {Url}", debugUrl);
+            _logger.LogDebug("[AI] Prompt: {Prompt}", BuildCompactPrompt(message));
 
             var prompt = BuildCompactPrompt(message);
 
@@ -254,12 +269,22 @@ namespace Infrastructure.Services
                 var errorBody = await resp.Content.ReadAsStringAsync(cts.Token);
                 _logger.LogError("[AI] Gemini API Error (Status {Status}): {Body}", resp.StatusCode, errorBody);
                 
-                // Fallback to internal keyword/sentiment scan if API fails
+                if (errorBody.Contains("leaked", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogCritical("[AI-SECURITY] YOUR GEMINI API KEY HAS BEEN MARKED AS LEAKED BY GOOGLE. PLEASE REPLACE IT IN appsettings.json IMMEDIATELY.");
+                }
+
+                // Tạm thời không dùng Fallback theo yêu cầu
+                // --> Đã phục hồi lại vì hệ thống gặp lỗi Rate Limit
                 return InternalFallbackScan(message);
             }
 
             var body = await resp.Content.ReadAsStringAsync(cts.Token);
+            _logger.LogInformation("[AI] Gemini Raw Response: {Body}", body);
+            
             var text = ExtractText(body);
+            _logger.LogInformation("[AI] Gemini Extracted Text: '{Text}'", text);
+            
             var label = ParseLabel(text);
             return (label, "ai:gemini", "gemini");
         }
@@ -273,7 +298,8 @@ namespace Infrastructure.Services
             { 
                 "óc", "lợn", "heo", "chó", "cc", "cl", "dm", "dmm", "cmm", "bùi", "cac", "cak", 
                 "vcl", "vkl", "vl", "ngu", "đĩ", "lồn", "cặc", "cút", "mẹ mày", "con chó", "đẻ",
-                "thằng", "mẹ", "dở", "tệ", "kém", "vô dụng", "nát", "rác", "đấm vào tai", "ngáo"
+                "thằng", "mẹ", "dở", "tệ", "kém", "vô dụng", "nát", "rác", "đấm vào tai", "ngáo",
+                "fuck", "shit", "bitch", "asshole", "dick", "pussy", "hỗn độn", "thất vọng", "kém", "súc vật"
             };
 
             foreach (var kw in toxicPatterns)
@@ -293,15 +319,15 @@ namespace Infrastructure.Services
         private static string BuildCompactPrompt(string message)
         {
             // Output must be single token: ALLOW, WARNING, or BLOCK
-            return "Task: Professional Vietnamese content moderation for a public display.\n" +
-                   "Context: Act as a Vietnamese linguistic expert. Professional and strict.\n" +
-                   "Categories:\n" +
-                   "- BLOCK: Profanity, animal-based insults, OR ANY NEGATIVE CRITICISM/INSULTS (e.g., 'hát dở', 'vô dụng', 'tệ', 'kém', 'đấm vào tai').\n" +
-                   "- WARNING: Suspicious teencode or sarcasm.\n" +
-                   "- ALLOW: Clean, polite, and positive wishes ONLY.\n" +
-                   "Goal: BLOCK ALL negative, insulting or mean-spirited comments. Focus on maintaining a positive atmosphere.\n" +
-                   "Message: " + message + "\n" +
-                   "Output ONLY ONE WORD (ALLOW, WARNING, or BLOCK):";
+            return "BẠN LÀ MỘT CHUYÊN GIA KIỂM DUYỆT NỘI DUNG TIẾNG VIỆT NGHIÊM KHẮC.\n" +
+                   "NHIỆM VỤ: Kiểm duyệt lời chúc cho sự kiện công cộng. Duy trì không khí tích cực.\n" +
+                   "QUY TẮC:\n" +
+                   "1. CẤM (BLOCK): Các từ chửi bới, tục tĩu (cặc, lồn, đm, vcl...), các từ sỉ nhục động vật (súc vật, chó, lợn, bò...), mỉa mai tiêu cực (hát dở, tổ chức tệ, mớ hỗn độn, thất vọng, kém, ngu, dốt...).\n" +
+                   "2. CẢNH BÁO (WARNING): Teencode khó hiểu, câu hỏi không liên quan.\n" +
+                   "3. CHO PHÉP (ALLOW): Chỉ những lời chúc thật sự tốt đẹp, tích cực, lịch sự.\n" +
+                   "LƯU Ý: Nếu có bất kỳ dấu hiệu tiêu cực nào, hãy BLOCK ngay lập tức. Không được nương tay.\n" +
+                   "Nội dung cần kiểm tra: \"" + message + "\"\n" +
+                   "CHỈ TRẢ LỜI DUY NHẤT 1 TỪ (ALLOW, WARNING, hoặc BLOCK):";
         }
 
         private static string ExtractText(string json)
@@ -333,9 +359,17 @@ namespace Infrastructure.Services
         private static string ParseLabel(string text)
         {
             var t = (text ?? string.Empty).Trim().ToUpperInvariant();
-            if (t.Contains("BLOCK")) return "BLOCK";
-            if (t.Contains("WARNING")) return "WARNING";
-            if (t.Contains("ALLOW")) return "ALLOW";
+            
+            // Prioritize BLOCK
+            if (t.Contains("BLOCK") || t.Contains("CẤM") || t.Contains("TỪ CHỐI")) return "BLOCK";
+            
+            // Then WARNING
+            if (t.Contains("WARNING") || t.Contains("CẢNH BÁO")) return "WARNING";
+            
+            // Only ALLOW if explicitly found and no BLOCK/WARNING signs
+            if (t.Contains("ALLOW") || t.Contains("CHO PHÉP")) return "ALLOW";
+
+            // If the model refuses to answer or returns something else, be safe and BLOCK/WARNING
             return "WARNING";
         }
     }
