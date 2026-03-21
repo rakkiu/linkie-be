@@ -1,5 +1,7 @@
 using Application.Interfaces;
 using Domain.Interface;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 using MediatR;
 
 namespace Application.Usecase.Admin.Wishwall

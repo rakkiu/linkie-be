@@ -5,6 +5,10 @@ using Application.Usecase.Admin.Report;
 using Application.Usecase.Admin.Sentiment;
 using Application.Usecase.Admin.SystemHealth;
 using Application.Usecase.Admin.Wishwall;
+using Application.Usecase.Admin.WishwallAi;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
+using Infrastructure.Identity;
 using Application.Usecase.Admin.FanInsights;
 using Application.Usecase.ArFrame.DeleteFrame;
 using Application.Usecase.ArFrame.GetFrames;
@@ -15,7 +19,6 @@ using Application.Usecase.EventManagement.DeleteEvent;
 using Application.Usecase.EventManagement.GetAdminEventList;
 using Application.Usecase.EventManagement.UpdateEvent;
 using Application.Interfaces;
-using Domain.Interface;
 using Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +29,7 @@ namespace Presentation.Controllers.Admin
 {
     [Route("api/admin")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Staff")]
     public class AdminController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -349,6 +352,38 @@ namespace Presentation.Controllers.Admin
                 Data = null,
                 ResponsedAt = DateTime.UtcNow
             });
+        }
+
+        // AI Logs: GET /api/admin/events/{eventId}/wishwall/ai-logs?take=200
+        [HttpGet("events/{eventId:guid}/wishwall/ai-logs")]
+        [ProducesResponseType(typeof(ApiResponse<List<WishwallAiLogDto>>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<List<WishwallAiLogDto>>>> GetWishwallAiLogs(
+            Guid eventId,
+            [FromQuery] int take = 200,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var result = await _mediator.Send(new GetWishwallAiLogsQuery(eventId, take), cancellationToken);
+                return Ok(new ApiResponse<List<WishwallAiLogDto>>
+                {
+                    StatusCode = 200,
+                    Message = "Wishwall AI logs retrieved",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while retrieving AI logs.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
         }
 
         // FR-07: GET /api/admin/events/{eventId}/fan-insights

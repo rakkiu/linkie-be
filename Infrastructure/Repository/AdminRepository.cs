@@ -1,8 +1,9 @@
 using Domain.Entity;
 using Domain.Enums;
-using Domain.Interface;
 using Infrastructure.Identity;
 using Application.Interfaces;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repository
@@ -233,6 +234,51 @@ namespace Infrastructure.Repository
             }
 
             await _db.SaveChangesAsync(ct);
+        }
+
+        public async Task<List<WishwallAiLogDto>> GetWishwallAiLogsAsync(Guid eventId, int take, CancellationToken ct = default)
+        {
+            var query = from log in _db.WishwallAiLogs
+                        join msg in _db.WishwallMessages on log.MessageId equals msg.Id
+                        where msg.EventId == eventId
+                        orderby log.CreatedAt descending
+                        select new WishwallAiLogDto
+                        {
+                            MessageId = log.MessageId,
+                            Message = msg.Message,
+                            Label = log.Label,
+                            Reason = log.Reason,
+                            Source = log.Source,
+                            DurationMs = log.DurationMs,
+                            CreatedAt = log.CreatedAt
+                        };
+
+            return await query.Take(take).ToListAsync(ct);
+        }
+
+        public async Task<WishwallAiSummaryDto> GetWishwallAiSummaryAsync(Guid eventId, CancellationToken ct = default)
+        {
+            var logs = from log in _db.WishwallAiLogs
+                       join msg in _db.WishwallMessages on log.MessageId equals msg.Id
+                       where msg.EventId == eventId
+                       select log;
+
+            var total = await logs.CountAsync(ct);
+            var allow = await logs.CountAsync(l => l.Label == "ALLOW", ct);
+            var review = await logs.CountAsync(l => l.Label == "REVIEW", ct);
+            var block = await logs.CountAsync(l => l.Label == "BLOCK", ct);
+            var fallback = await logs.CountAsync(l => l.Source == "fallback", ct);
+            var avgDuration = total == 0 ? 0 : await logs.AverageAsync(l => (double)l.DurationMs, ct);
+
+            return new WishwallAiSummaryDto
+            {
+                Total = total,
+                Allow = allow,
+                Review = review,
+                Block = block,
+                Fallback = fallback,
+                AvgDurationMs = avgDuration
+            };
         }
     }
 }

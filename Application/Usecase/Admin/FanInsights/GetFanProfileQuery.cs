@@ -1,5 +1,8 @@
 using MediatR;
 using Domain.Interface;
+using Application.Interfaces;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 
 namespace Application.Usecase.Admin.FanInsights
 {

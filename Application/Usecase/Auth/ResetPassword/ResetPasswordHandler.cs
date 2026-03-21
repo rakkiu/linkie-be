@@ -1,4 +1,7 @@
 using Domain.Interface;
+using Application.Interfaces;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 using Domain.Interfaces;
 using MediatR;
 

@@ -1,5 +1,8 @@
 using Domain.Entity;
 using Domain.Interface;
+using Application.Interfaces;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 using MediatR;
 
 namespace Application.Usecase.ArFrame.RecordUsage
