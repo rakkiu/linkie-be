@@ -22,6 +22,10 @@ namespace Presentation
             // Add services to the container.
             builder.Services.AddAppServices(builder.Configuration);
 
+            Console.WriteLine("====================================================");
+            Console.WriteLine(">>> LINKIE BACKEND VERSION: 2.0 (AI ENABLED) <<<");
+            Console.WriteLine("====================================================");
+
             // SignalR
             builder.Services.AddSignalR();
 

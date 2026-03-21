@@ -11,7 +11,13 @@ namespace Application.Interfaces
         // Notify staff that a new message is pending review
         Task NotifyStaffNewPendingAsync(Guid eventId, object payload);
 
+        // Notify staff that a new AI Log has been added (real-time)
+        Task NotifyStaffNewAiLogAsync(Guid eventId, object payload);
+
         // Push a specific message to the LED screen group
         Task DisplayOnLedAsync(Guid eventId, object payload);
+
+        // Notify staff about system alerts (e.g., API Quota Exceeded)
+        Task NotifyStaffSystemAlertAsync(Guid eventId, string alertType, string message);
     }
 }

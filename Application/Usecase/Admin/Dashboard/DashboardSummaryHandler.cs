@@ -1,7 +1,6 @@
-using Domain.Interface;
-using MediatR;
-
 using Application.Interfaces;
+using Application.Model.WishwallAi;
+using MediatR;
 
 namespace Application.Usecase.Admin.Dashboard
 {
@@ -28,6 +27,7 @@ namespace Application.Usecase.Admin.Dashboard
             var photographers = await _repo.GetPhotographerCountAsync(eventId, cancellationToken);
             var sentiment = await _repo.GetSentimentSummaryAsync(eventId, cancellationToken);
             var frameStats = await _repo.GetFrameStatsAsync(eventId, cancellationToken);
+            var aiSummary = await _repo.GetWishwallAiSummaryAsync(eventId, cancellationToken);
             
             // Lấy 5 tin nhắn gần nhất đã duyệt (được giả định là OnLed)
             var recentMessages = await _repo.GetPagedWishwallMessagesAsync(eventId, 1, 50, cancellationToken);
@@ -44,6 +44,7 @@ namespace Application.Usecase.Admin.Dashboard
                     FrameName = f.FrameName,
                     UsageCount = f.Usage
                 }).ToList(),
+                AiSummary = aiSummary,
                 RecentLiveMessages = recentMessages.Select(m => new LiveMessageDto
                 {
                     UserName = _encryptionService.Decrypt(m.User.Name),

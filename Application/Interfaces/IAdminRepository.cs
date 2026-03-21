@@ -1,7 +1,9 @@
 using Domain.Entity;
 using Domain.Enums;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 
-namespace Domain.Interface
+namespace Application.Interfaces
 {
     public interface IAdminRepository
     {
@@ -30,6 +32,10 @@ namespace Domain.Interface
         // Fan Insights (FR-07)
         Task<List<UserFanInsightDto>> GetFanInsightsAsync(Guid eventId, CancellationToken ct = default);
         Task<FanProfileDto?> GetFanProfileAsync(Guid eventId, Guid userId, CancellationToken ct = default);
+
+        // Wishwall AI
+        Task<List<WishwallAiLogDto>> GetWishwallAiLogsAsync(Guid eventId, int take, CancellationToken ct = default);
+        Task<WishwallAiSummaryDto> GetWishwallAiSummaryAsync(Guid eventId, CancellationToken ct = default);
 
         // Emergency
         Task ClearLedMessagesAsync(Guid eventId, CancellationToken ct = default);

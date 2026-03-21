@@ -1,5 +1,6 @@
 using MediatR;
-using Domain.Interface;
+using Application.Interfaces;
+using Application.Model.Admin;
 
 namespace Application.Usecase.Admin.FanInsights
 {

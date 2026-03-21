@@ -1,6 +1,6 @@
 using Domain.Enums;
 
-namespace Domain.Interface
+namespace Application.Model.Admin
 {
     public class UserFanInsightDto
     {
