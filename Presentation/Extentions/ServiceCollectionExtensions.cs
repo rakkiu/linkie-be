@@ -50,6 +50,7 @@ namespace Presentation.Extentions
             services.AddScoped<IEmailService, EmailService>(); // Register EmailService
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
             services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
+            services.AddScoped<IFirebaseService, FirebaseService>(); // Register FirebaseService
             services.AddScoped<IWishwallNotifier, WishwallNotifier>(); // Register WishwallNotifier (SignalR)
             services.AddScoped<IWishwallAiModerationService, WishwallAiModerationService>();
             services.AddHttpClient("Gemini");
