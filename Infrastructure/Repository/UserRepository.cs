@@ -1,4 +1,4 @@
-﻿using Domain.Entity;
+using Domain.Entity;
 using Domain.Interfaces;
 using Infrastructure.Identity;
 using Infrastructure.Security;
@@ -29,7 +29,21 @@ namespace Infrastructure.Repositories
             }
 
             return user;
+        }
 
+        public async Task<User?> GetByFirebaseUidAsync(string firebaseUid, CancellationToken ct = default)
+        {
+            var user = await _db.Users
+                .Include(u => u.JwtTokens)
+                .FirstOrDefaultAsync(u => u.FirebaseUid == firebaseUid, ct);
+
+            if (user != null)
+            {
+                _db.Entry(user).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                DecryptUserSensitiveData(user);
+            }
+
+            return user;
         }
         public async Task<User?> GetByIdWithoutDecryptAsync(Guid id, CancellationToken ct = default)
         {

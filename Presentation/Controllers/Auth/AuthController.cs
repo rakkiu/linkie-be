@@ -1,5 +1,6 @@
-﻿using Application.Model.Auth.Login;
+using Application.Model.Auth.Login;
 using Application.Model.Auth.Token;
+using Application.Usecase.Auth.GoogleLogin;
 using Application.Usecase.Auth.ChangePassword;
 using Application.Usecase.Auth.ForgotPassword;
 using Application.Usecase.Auth.Login;
@@ -34,6 +35,20 @@ namespace Presentation.Controllers.Auth
             {
                 StatusCode = 200,
                 Message = "Login successful",
+                Data = res,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+
+        [HttpPost("google-login")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), 200)]
+        public async Task<ActionResult<ApiResponse<LoginResponseDto>>> GoogleLogin([FromBody] GoogleLoginCommand command)
+        {
+            var res = await _mediator.Send(command);
+            return Ok(new ApiResponse<LoginResponseDto>
+            {
+                StatusCode = 200,
+                Message = "Google login successful",
                 Data = res,
                 ResponsedAt = DateTime.UtcNow
             });
