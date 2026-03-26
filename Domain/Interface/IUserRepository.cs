@@ -1,4 +1,4 @@
-﻿using Domain.Entity;
+using Domain.Entity;
 
 namespace Domain.Interfaces
 {
@@ -8,6 +8,7 @@ namespace Domain.Interfaces
         void UpdatePasswordOnly(User user);
         Task<User?> GetByIdWithoutDecryptAsync(Guid id, CancellationToken ct = default);
         Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
+        Task<User?> GetByFirebaseUidAsync(string firebaseUid, CancellationToken ct = default);
         Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
 }
