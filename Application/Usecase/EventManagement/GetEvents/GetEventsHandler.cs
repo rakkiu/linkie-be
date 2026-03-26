@@ -1,8 +1,11 @@
 using Domain.Enums;
 using Domain.Interface;
+using Application.Interfaces;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 using MediatR;
 
-namespace Application.Usecase.Event.GetEvents
+namespace Application.Usecase.EventManagement.GetEvents
 {
     public class GetEventsHandler : IRequestHandler<GetEventsQuery, List<EventResponseDto>>
     {
@@ -16,7 +19,7 @@ namespace Application.Usecase.Event.GetEvents
             if (!string.IsNullOrWhiteSpace(request.Status) && Enum.TryParse(request.Status, ignoreCase: true, out EventStatus parsed))
                 status = parsed;
             else
-                status = EventStatus.Active;
+                status = EventStatus.Ongoing;
 
             var events = await _repo.GetByStatusAsync(status, cancellationToken);
 
@@ -25,11 +28,12 @@ namespace Application.Usecase.Event.GetEvents
                 Id = e.Id,
                 Name = e.Name,
                 Description = e.Description,
-                StartTime = e.StartTime,
-                EndTime = e.EndTime,
+                StartTime = new DateTimeOffset(DateTime.SpecifyKind(e.StartTime, DateTimeKind.Utc)),
+                EndTime = new DateTimeOffset(DateTime.SpecifyKind(e.EndTime, DateTimeKind.Utc)),
                 Location = e.Location,
                 Status = e.Status.ToString(),
-                CreatedAt = e.CreatedAt
+                ThumbnailUrl = e.ThumbnailUrl,
+                CreatedAt = new DateTimeOffset(DateTime.SpecifyKind(e.CreatedAt, DateTimeKind.Utc))
             }).ToList();
         }
     }

@@ -12,6 +12,8 @@ using Infrastructure.Identity; // Add this
 using Infrastructure.Services;
 using Infrastructure.Shared;
 using Application.Usecase.Auth.Login;   // Add this
+using Presentation.Services;
+using Infrastructure.Services;
 
 namespace Presentation.Extentions
 {
@@ -47,6 +49,11 @@ namespace Presentation.Extentions
             services.AddScoped<IJwtService, JwtService>(); // Register JwtService
             services.AddScoped<IEmailService, EmailService>(); // Register EmailService
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
+            services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
+            services.AddScoped<IFirebaseService, FirebaseService>(); // Register FirebaseService
+            services.AddScoped<IWishwallNotifier, WishwallNotifier>(); // Register WishwallNotifier (SignalR)
+            services.AddScoped<IWishwallAiModerationService, WishwallAiModerationService>();
+            services.AddHttpClient("Gemini");
 
             // 🔹 MediatR
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly));
@@ -70,11 +77,29 @@ namespace Presentation.Extentions
                             ValidAudience = config["JwtSettings:Audience"],
                             IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
                             ClockSkew = TimeSpan.FromSeconds(30),
-                            RoleClaimType = "RoleCode",
+                            RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
+                        };
+                        // Allow SignalR to pass JWT via query string (?access_token=...)
+                        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                        {
+                            OnMessageReceived = ctx =>
+                            {
+                                var accessToken = ctx.Request.Query["access_token"];
+                                var path = ctx.HttpContext.Request.Path;
+                                if (!string.IsNullOrEmpty(accessToken) &&
+                                    path.StartsWithSegments("/hubs"))
+                                {
+                                    ctx.Token = accessToken;
+                                }
+                                return Task.CompletedTask;
+                            }
                         };
                     });
             }
+
+            // 🔹 SignalR
+            services.AddSignalR();
 
             // 🔹 Authorization
             services.AddAuthorization();

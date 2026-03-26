@@ -1,7 +1,9 @@
 using Domain.Entity;
 using Domain.Enums;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 
-namespace Domain.Interface
+namespace Application.Interfaces
 {
     public interface IAdminRepository
     {
@@ -9,6 +11,7 @@ namespace Domain.Interface
         Task<int> GetParticipantCountAsync(Guid eventId, CancellationToken ct = default);
         Task<int> GetMessageCountAsync(Guid eventId, CancellationToken ct = default);
         Task<int> GetFrameUsageCountAsync(Guid eventId, CancellationToken ct = default);
+        Task<int> GetPhotographerCountAsync(Guid eventId, CancellationToken ct = default);
         Task<Dictionary<WishwallSentiment, int>> GetSentimentSummaryAsync(Guid eventId, CancellationToken ct = default);
         Task<(Guid FrameId, string FrameName, int Usage)?> GetTopFrameAsync(Guid eventId, CancellationToken ct = default);
 
@@ -25,5 +28,16 @@ namespace Domain.Interface
 
         // System health ping (FR-05)
         Task<bool> PingAsync(CancellationToken ct = default);
+
+        // Fan Insights (FR-07)
+        Task<List<UserFanInsightDto>> GetFanInsightsAsync(Guid eventId, CancellationToken ct = default);
+        Task<FanProfileDto?> GetFanProfileAsync(Guid eventId, Guid userId, CancellationToken ct = default);
+
+        // Wishwall AI
+        Task<List<WishwallAiLogDto>> GetWishwallAiLogsAsync(Guid eventId, int take, CancellationToken ct = default);
+        Task<WishwallAiSummaryDto> GetWishwallAiSummaryAsync(Guid eventId, CancellationToken ct = default);
+
+        // Emergency
+        Task ClearLedMessagesAsync(Guid eventId, CancellationToken ct = default);
     }
 }

@@ -4,3 +4,12 @@ obj/
 *.user
 *.suo
 appsettings.Development.json
+.env
+*.json
+!appsettings.json
+!package.json
+!project.assets.json
+!*.csproj
+!*.sln
+# Firebase Service Account (Specific file)
+hexa-linkie-firebase-adminsdk-fbsvc-27855a727e.json

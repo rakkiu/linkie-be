@@ -1,6 +1,10 @@
+using Application.Interfaces;
 using Domain.Entity;
 using Domain.Enums;
 using Domain.Interface;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
+using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Usecase.Wishwall.SendMessage
@@ -9,11 +13,25 @@ namespace Application.Usecase.Wishwall.SendMessage
     {
         private readonly IWishwallRepository _repo;
         private readonly IEventRepository _eventRepo;
+        private readonly IWishwallNotifier _notifier;
+        private readonly IUserRepository _userRepo;
+        private readonly IEncryptionService _encryption;
+        private readonly IWishwallAiModerationService _aiModeration;
 
-        public SendWishwallMessageHandler(IWishwallRepository repo, IEventRepository eventRepo)
+        public SendWishwallMessageHandler(
+            IWishwallRepository repo,
+            IEventRepository eventRepo,
+            IWishwallNotifier notifier,
+            IUserRepository userRepo,
+            IEncryptionService encryption,
+            IWishwallAiModerationService aiModeration)
         {
             _repo = repo;
             _eventRepo = eventRepo;
+            _notifier = notifier;
+            _userRepo = userRepo;
+            _encryption = encryption;
+            _aiModeration = aiModeration;
         }
 
         public async Task<bool> Handle(SendWishwallMessageCommand request, CancellationToken cancellationToken)
@@ -33,11 +51,23 @@ namespace Application.Usecase.Wishwall.SendMessage
                 UserId = request.UserId,
                 Message = request.Message,
                 Sentiment = sentiment,
+                IsApproved = false,
                 IsHidden = false
             };
 
             await _repo.AddAsync(message, cancellationToken);
             await _repo.SaveChangesAsync(cancellationToken);
+
+            _ = _aiModeration.EnqueueModerationAsync(message.Id, message.Message, cancellationToken);
+
+            // Notify the sender their message is queued for approval
+            await _notifier.NotifyMessagePendingAsync(request.UserId, new
+            {
+                id = message.Id,
+                message = message.Message,
+                createdAt = message.CreatedAt
+            });
+
             return true;
         }
 

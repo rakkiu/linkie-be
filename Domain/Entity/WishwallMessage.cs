@@ -9,7 +9,11 @@ namespace Domain.Entity
         public Guid UserId { get; set; }
         public string Message { get; set; } = string.Empty;
         public WishwallSentiment Sentiment { get; set; }
+        public bool IsApproved { get; set; } = false;
         public bool IsHidden { get; set; }
+        public bool IsDisplayedOnLed { get; set; } = false;
+        public string? AiLabel { get; set; }
+        public string? AiReason { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public Event Event { get; set; } = null!;

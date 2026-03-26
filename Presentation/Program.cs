@@ -3,7 +3,7 @@ using Infrastructure.Security;
 using Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Presentation.Extentions;
-using Presentation.Extentions;
+using Presentation.Hubs;
 using Presentation.Middlewares;
 
 namespace Presentation
@@ -15,18 +15,31 @@ namespace Presentation
             // Fix lỗi DateTime Unspecified của PostgreSQL
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
+            LoadEnvFile();
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
             builder.Services.AddAppServices(builder.Configuration);
 
-            // Thêm CORS service
+            Console.WriteLine("====================================================");
+            Console.WriteLine(">>> LINKIE BACKEND VERSION: 2.0 (AI ENABLED) <<<");
+            Console.WriteLine("====================================================");
+
+            // SignalR
+            builder.Services.AddSignalR();
+
+            // CORS — AllowCredentials is required for SignalR WebSocket/SSE
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAll",
-                    b => b.AllowAnyOrigin()
+                options.AddPolicy("AllowFrontend",
+                    b => b.WithOrigins(
+                              "http://localhost:5173",
+                              "https://localhost:5173",
+                              "http://localhost:3000")
                           .AllowAnyMethod()
-                          .AllowAnyHeader());
+                          .AllowAnyHeader()
+                          .AllowCredentials());
             });
 
             builder.Services.AddControllers();
@@ -51,7 +64,7 @@ namespace Presentation
                 dbContext.Database.Migrate();
 
                 // 3. Chạy Seeder (Thêm dòng này)
-                DbSeeder.SeedAsync(dbContext).Wait(); 
+                DbSeeder.SeedAsync(dbContext, config).Wait(); 
             }
             // --------------------------------
 
@@ -68,14 +81,51 @@ namespace Presentation
             app.UseHttpsRedirection();
 
             // Kích hoạt CORS
-            app.UseCors("AllowAll");
+            app.UseCors("AllowFrontend");
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
-
             app.MapControllers();
+            app.MapHub<WishwallHub>("/hubs/wishwall");
 
             app.Run();
+        }
+
+        private static void LoadEnvFile()
+        {
+            var baseDir = AppContext.BaseDirectory;
+            var current = new DirectoryInfo(baseDir);
+
+            while (current != null)
+            {
+                var envPath = Path.Combine(current.FullName, ".env");
+                if (File.Exists(envPath))
+                {
+                    foreach (var rawLine in File.ReadAllLines(envPath))
+                    {
+                        var line = rawLine.Trim();
+                        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+                        {
+                            continue;
+                        }
+
+                        var separatorIndex = line.IndexOf('=');
+                        if (separatorIndex <= 0)
+                        {
+                            continue;
+                        }
+
+                        var key = line[..separatorIndex].Trim();
+                        var value = line[(separatorIndex + 1)..].Trim().Trim('"');
+                        Environment.SetEnvironmentVariable(key, value);
+                    }
+
+                    break;
+                }
+
+                current = current.Parent;
+            }
         }
     }
 }

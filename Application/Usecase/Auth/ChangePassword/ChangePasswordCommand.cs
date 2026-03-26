@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 
 namespace Application.Usecase.Auth.ChangePassword
 {
