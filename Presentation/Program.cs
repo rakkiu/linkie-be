@@ -35,6 +35,7 @@ namespace Presentation
                 options.AddPolicy("AllowFrontend",
                     b => b.WithOrigins(
                               "https://linkie-fe.onrender.com",
+                              "https://linkie-fe.vercel.app",   
                               "http://localhost:5173")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
