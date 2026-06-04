@@ -7,6 +7,7 @@ using Application.Usecase.Auth.Login;
 using Application.Usecase.Auth.Logout;
 using Application.Usecase.Auth.Register;
 using Application.Usecase.Auth.ResetPassword;
+using Application.Usecase.Auth.EmailVerification;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -274,6 +275,70 @@ namespace Presentation.Controllers.Auth
                     StatusCode = 500,
                     Message = "An unexpected error occurred while changing password.",
                     Data = (object?)null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // ---------------- VERIFY EMAIL ----------------
+        [HttpPost("verify-email")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<object>>> VerifyEmail(
+            [FromBody] VerifyEmailRequest request)
+        {
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.Token))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        StatusCode = 400,
+                        Message = "Verification token is missing.",
+                        Data = null,
+                        ResponsedAt = DateTime.UtcNow
+                    });
+                }
+
+                await _mediator.Send(new VerifyEmailCommand(request.Token));
+
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "Email verified successfully.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = 400,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = "User not found.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while processing your request.",
+                    Data = null,
                     ResponsedAt = DateTime.UtcNow
                 });
             }

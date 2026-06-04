@@ -10,6 +10,7 @@ namespace Domain.Entity
         public string PasswordHash { get; set; } = string.Empty;
         public string? FirebaseUid { get; set; }
         public UserRole Role { get; set; }
+        public bool IsEmailVerified { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<JwtToken> JwtTokens { get; set; } = new List<JwtToken>();

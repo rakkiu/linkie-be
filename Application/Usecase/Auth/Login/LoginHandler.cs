@@ -28,6 +28,9 @@ namespace Application.Usecase.Auth.Login
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Invalid email or password.");
 
+            if (!user.IsEmailVerified)
+                throw new UnauthorizedAccessException("Email not verified. Please check your inbox.");
+
             // Generate tokens
             var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Name, user.Role.ToString());
             var refreshToken = _jwt.GenerateRefreshToken();

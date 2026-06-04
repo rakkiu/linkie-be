@@ -65,6 +65,7 @@ namespace Application.Usecase.Auth.GoogleLogin
                         Name = _encryptionService.Encrypt(firebaseUser.Name),
                         FirebaseUid = firebaseUser.FirebaseUid,
                         Role = UserRole.Attendee,
+                        IsEmailVerified = true,
                         CreatedAt = DateTime.UtcNow
                     };
                     await _userRepo.AddAsync(user, cancellationToken);
