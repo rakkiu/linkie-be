@@ -256,6 +256,39 @@ namespace Infrastructure.Repository
             return await query.Take(take).ToListAsync(ct);
         }
 
+        public async Task<PaginatedResult<UserListItemDto>> GetAllUsersAsync(int page, int pageSize, CancellationToken ct = default)
+        {
+            var query = _db.Users.OrderByDescending(u => u.CreatedAt);
+            var totalCount = await query.CountAsync(ct);
+            var users = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+            var items = users.Select(u => new UserListItemDto
+            {
+                Id = u.Id,
+                Name = _encryptionService.Decrypt(u.Name),
+                Email = _encryptionService.DecryptDeterministic(u.Email),
+                Role = u.Role.ToString()
+            }).ToList();
+
+            return new PaginatedResult<UserListItemDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task DeleteUserAsync(Guid userId, CancellationToken ct = default)
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+            if (user == null)
+                throw new KeyNotFoundException($"User with ID {userId} not found.");
+
+            _db.Users.Remove(user);
+            await _db.SaveChangesAsync(ct);
+        }
+
         public async Task<WishwallAiSummaryDto> GetWishwallAiSummaryAsync(Guid eventId, CancellationToken ct = default)
         {
             var logs = from log in _db.WishwallAiLogs

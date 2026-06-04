@@ -39,5 +39,9 @@ namespace Application.Interfaces
 
         // Emergency
         Task ClearLedMessagesAsync(Guid eventId, CancellationToken ct = default);
+
+        // User Management
+        Task<PaginatedResult<UserListItemDto>> GetAllUsersAsync(int page, int pageSize, CancellationToken ct = default);
+        Task DeleteUserAsync(Guid userId, CancellationToken ct = default);
     }
 }
