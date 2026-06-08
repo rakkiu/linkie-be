@@ -6,6 +6,8 @@ using Application.Usecase.Admin.Sentiment;
 using Application.Usecase.Admin.SystemHealth;
 using Application.Usecase.Admin.Wishwall;
 using Application.Usecase.Admin.WishwallAi;
+using Application.Usecase.Admin.UserManagement.GetAllUsers;
+using Application.Usecase.Admin.UserManagement.DeleteUser;
 using Application.Model.Admin;
 using Application.Model.WishwallAi;
 using Infrastructure.Identity;
@@ -453,6 +455,59 @@ namespace Presentation.Controllers.Admin
                 {
                     StatusCode = 500,
                     Message = "An error occurred while retrieving fan profile.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────────
+        // USER MANAGEMENT
+        // ──────────────────────────────────────────────────────────────
+
+        // GET /api/admin/users?page=1&pageSize=20
+        [HttpGet("users")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(ApiResponse<PaginatedResult<UserListItemDto>>), 200)]
+        public async Task<ActionResult<ApiResponse<PaginatedResult<UserListItemDto>>>> GetAllUsers(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _mediator.Send(new GetAllUsersQuery(page, pageSize), cancellationToken);
+            return Ok(new ApiResponse<PaginatedResult<UserListItemDto>>
+            {
+                StatusCode = 200,
+                Message = "Users retrieved successfully.",
+                Data = result,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+
+        // DELETE /api/admin/users/{id}
+        [HttpDelete("users/{id:guid}")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteUser(Guid id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _mediator.Send(new DeleteUserCommand(id), cancellationToken);
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "User deleted successfully.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = ex.Message,
                     Data = null,
                     ResponsedAt = DateTime.UtcNow
                 });
