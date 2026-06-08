@@ -13,3 +13,7 @@ appsettings.Development.json
 !*.sln
 # Firebase Service Account (Specific file)
 hexa-linkie-firebase-adminsdk-fbsvc-27855a727e.json
+
+# Claude AI config
+.claude/
+CLAUDE.md

@@ -22,9 +22,7 @@ namespace Presentation
             // Add services to the container.
             builder.Services.AddAppServices(builder.Configuration);
 
-            Console.WriteLine("====================================================");
-            Console.WriteLine(">>> LINKIE BACKEND VERSION: 2.0 (AI ENABLED) <<<");
-            Console.WriteLine("====================================================");
+          
 
             // SignalR
             builder.Services.AddSignalR();
@@ -34,9 +32,10 @@ namespace Presentation
             {
                 options.AddPolicy("AllowFrontend",
                     b => b.WithOrigins(
-                              "http://localhost:5173",
-                              "https://localhost:5173",
-                              "http://localhost:3000")
+                              "https://linkie-fe.onrender.com",
+                              "https://linkie-fe.vercel.app",
+                              "https://linkie.digital",
+                              "http://localhost:5173")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials());
