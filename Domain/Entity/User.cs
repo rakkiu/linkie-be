@@ -19,5 +19,6 @@ namespace Domain.Entity
         public ICollection<EventParticipant> EventParticipants { get; set; } = new List<EventParticipant>();
         public ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
         public ICollection<UserEventStat> UserEventStats { get; set; } = new List<UserEventStat>();
+        public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
     }
 }

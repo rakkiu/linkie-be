@@ -41,7 +41,10 @@ namespace Presentation
                           .AllowCredentials());
             });
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.AddService<TicketVerificationFilter>();
+            });
             builder.Services.AddSwaggerWithJwt();
 
             var app = builder.Build();

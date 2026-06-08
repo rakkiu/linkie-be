@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260604132704_SeedIsEmailVerifiedTrue")]
+    partial class SeedIsEmailVerifiedTrue
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -199,49 +202,6 @@ namespace Infrastructure.Migrations
                     b.HasIndex("AdminId");
 
                     b.ToTable("SystemLogs");
-                });
-
-            modelBuilder.Entity("Domain.Entity.Ticket", b =>
-                {
-                    b.Property<Guid>("TicketId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("AssignedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("EventId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TicketCode")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("TicketId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("EventId", "TicketCode")
-                        .IsUnique();
-
-                    b.ToTable("Tickets");
                 });
 
             modelBuilder.Entity("Domain.Entity.User", b =>
@@ -491,24 +451,6 @@ namespace Infrastructure.Migrations
                     b.Navigation("Admin");
                 });
 
-            modelBuilder.Entity("Domain.Entity.Ticket", b =>
-                {
-                    b.HasOne("Domain.Entity.Event", "Event")
-                        .WithMany("Tickets")
-                        .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Entity.User", "User")
-                        .WithMany("Tickets")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Event");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Domain.Entity.UserEventStat", b =>
                 {
                     b.HasOne("Domain.Entity.Event", "Event")
@@ -571,8 +513,6 @@ namespace Infrastructure.Migrations
 
                     b.Navigation("FrameUsages");
 
-                    b.Navigation("Tickets");
-
                     b.Navigation("UserEventStats");
 
                     b.Navigation("WishwallKeywords");
@@ -589,8 +529,6 @@ namespace Infrastructure.Migrations
                     b.Navigation("JwtTokens");
 
                     b.Navigation("SystemLogs");
-
-                    b.Navigation("Tickets");
 
                     b.Navigation("UserEventStats");
 
