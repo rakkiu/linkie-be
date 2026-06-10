@@ -10,6 +10,7 @@ namespace Domain.Entity
         public string PasswordHash { get; set; } = string.Empty;
         public string? FirebaseUid { get; set; }
         public UserRole Role { get; set; }
+        public bool IsEmailVerified { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<JwtToken> JwtTokens { get; set; } = new List<JwtToken>();
@@ -18,5 +19,6 @@ namespace Domain.Entity
         public ICollection<EventParticipant> EventParticipants { get; set; } = new List<EventParticipant>();
         public ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
         public ICollection<UserEventStat> UserEventStats { get; set; } = new List<UserEventStat>();
+        public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
     }
 }
