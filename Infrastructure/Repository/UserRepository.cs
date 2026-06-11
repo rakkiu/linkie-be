@@ -70,18 +70,23 @@ namespace Infrastructure.Repositories
                 await _db.SaveChangesAsync(ct);
                 newUser.Email = EncryptionHelper.DecryptDeterministic(newUser.Email);
                 newUser.Name = EncryptionHelper.Decrypt(newUser.Name);
+                _db.Entry(newUser).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
                 return newUser;
             }
             catch (DbUpdateException ex)
                 when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
             {
+                _db.Entry(newUser).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+
                 var existingUser = await GetByEmailAsync(plainEmail, ct)
                     ?? throw new InvalidOperationException("Duplicate key but user not found by email.");
 
                 if (string.IsNullOrEmpty(existingUser.FirebaseUid))
                 {
                     existingUser.FirebaseUid = newUser.FirebaseUid;
+                    _db.Entry(existingUser).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                     await _db.SaveChangesAsync(ct);
+                    _db.Entry(existingUser).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
                 }
 
                 return existingUser;
