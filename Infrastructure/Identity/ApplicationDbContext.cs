@@ -21,6 +21,7 @@ namespace Infrastructure.Identity
         public DbSet<SystemLog> SystemLogs => Set<SystemLog>();
         public DbSet<UserEventStat> UserEventStats => Set<UserEventStat>();
         public DbSet<JwtToken> JwtTokens => Set<JwtToken>();
+        public DbSet<Ticket> Tickets => Set<Ticket>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +32,16 @@ namespace Infrastructure.Identity
                 .Property(u => u.Role)
                 .HasConversion<string>();
 
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique()
+                .HasDatabaseName("idx_users_email");
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.FirebaseUid)
+                .IsUnique()
+                .HasDatabaseName("idx_users_firebase_uid");
+
             modelBuilder.Entity<Event>()
                 .Property(e => e.Status)
                 .HasConversion<string>();
@@ -38,6 +49,28 @@ namespace Infrastructure.Identity
             modelBuilder.Entity<WishwallMessage>()
                 .Property(w => w.Sentiment)
                 .HasConversion<string>();
+
+            modelBuilder.Entity<Ticket>()
+                .Property(t => t.Status)
+                .HasConversion<string>();
+
+            // Ticket relationships
+            modelBuilder.Entity<Ticket>()
+                .HasIndex(t => new { t.EventId, t.TicketCode })
+                .IsUnique();
+
+            modelBuilder.Entity<Ticket>()
+                .HasOne(t => t.Event)
+                .WithMany(e => e.Tickets)
+                .HasForeignKey(t => t.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Ticket>()
+                .HasOne(t => t.User)
+                .WithMany(u => u.Tickets)
+                .HasForeignKey(t => t.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // WishwallMessage relationships
             modelBuilder.Entity<WishwallMessage>()

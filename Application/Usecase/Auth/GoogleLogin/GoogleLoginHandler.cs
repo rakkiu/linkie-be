@@ -43,65 +43,50 @@ namespace Application.Usecase.Auth.GoogleLogin
                 throw new UnauthorizedAccessException("Invalid Google Token.");
             }
 
-            // 2. Find or Create User
-            // Phase 1: Try finding by FirebaseUid
+            // 2. Find or Create User (Optimistic Write)
             User? user = await _userRepo.GetByFirebaseUidAsync(firebaseUser.FirebaseUid, cancellationToken);
-            string plainEmail = firebaseUser.Email;
-            string plainName = firebaseUser.Name;
 
             if (user == null)
             {
-                // Phase 2: Try finding by Email (to link existing traditional accounts)
-                user = await _userRepo.GetByEmailAsync(firebaseUser.Email, cancellationToken);
-                
-                if (user == null)
+                Console.WriteLine(">>> GoogleLoginHandler: Creating new user (optimistic)...");
+                var newUser = new User
                 {
-                    // Phase 3: Create new user
-                    Console.WriteLine(">>> GoogleLoginHandler: Creating new user...");
-                    user = new User
-                    {
-                        Id = Guid.NewGuid(),
-                        Email = _encryptionService.EncryptDeterministic(firebaseUser.Email),
-                        Name = _encryptionService.Encrypt(firebaseUser.Name),
-                        FirebaseUid = firebaseUser.FirebaseUid,
-                        Role = UserRole.Attendee,
-                        IsEmailVerified = true,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    await _userRepo.AddAsync(user, cancellationToken);
-                    await _userRepo.SaveChangesAsync(cancellationToken);
-                }
-                else
-                {
-                    // Phase 4: Link existing user
-                    Console.WriteLine(">>> GoogleLoginHandler: Linking existing user by email...");
-                    user.FirebaseUid = firebaseUser.FirebaseUid;
-                    // Note: user.Email and user.Name are already decrypted by repo here
-                    plainEmail = user.Email;
-                    plainName = user.Name;
+                    Id = Guid.NewGuid(),
+                    Email = _encryptionService.EncryptDeterministic(firebaseUser.Email),
+                    Name = _encryptionService.Encrypt(firebaseUser.Name),
+                    FirebaseUid = firebaseUser.FirebaseUid,
+                    Role = UserRole.Attendee,
+                    IsEmailVerified = true,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-                    // We need to re-encrypt them for the update if the Repo doesn't handle it
-                    // But usually we only update the FirebaseUid column
-                    await _userRepo.SaveChangesAsync(cancellationToken);
-                }
+                user = await _userRepo.CreateOrGetGoogleUserAsync(newUser, firebaseUser.Email, cancellationToken)
+                       ?? throw new InvalidOperationException("Failed to create or find user.");
             }
-            else 
+            else
             {
                 Console.WriteLine(">>> GoogleLoginHandler: User found by FirebaseUid.");
-                plainEmail = user.Email;
-                plainName = user.Name;
             }
+
+            string plainEmail = user.Email;
+            string plainName = user.Name;
 
             // 3. Generate tokens (Ensure we use PLAIN TEXT email/name)
             var accessToken = _jwtService.GenerateAccessToken(user.Id, plainEmail, plainName, user.Role.ToString());
             var refreshToken = _jwtService.GenerateRefreshToken();
 
-            var accessTokenExpirationMinutes = _jwtService.GetAccessTokenExpirationMinutes();
             var refreshTokenExpirationDays = _jwtService.GetRefreshTokenExpirationDays();
 
-            // 4. Save tokens to DB
-            await SaveTokenAsync(accessToken, "AccessToken", user.Id, accessTokenExpirationMinutes, cancellationToken);
-            await SaveTokenAsync(refreshToken, "RefreshToken", user.Id, refreshTokenExpirationDays * 24 * 60, cancellationToken);
+            // 4. Save only RefreshToken to DB (AccessToken is stateless)
+            var tokenEntity = new JwtToken
+            {
+                Token = refreshToken,
+                TokenType = "RefreshToken",
+                ExpiresAt = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(refreshTokenExpirationDays), DateTimeKind.Unspecified),
+                IsRevoked = false,
+                UserId = user.Id
+            };
+            await _jwtTokenRepo.SaveTokenAsync(tokenEntity, cancellationToken);
             await _jwtTokenRepo.SaveChangeAsync(cancellationToken);
 
             return new LoginResponseDto
@@ -109,19 +94,6 @@ namespace Application.Usecase.Auth.GoogleLogin
                 AccessToken = accessToken,
                 RefreshToken = refreshToken
             };
-        }
-
-        private async Task SaveTokenAsync(string token, string type, Guid userId, int expirationMinutes, CancellationToken ct)
-        {
-            var tokenEntity = new JwtToken
-            {
-                Token = token,
-                TokenType = type,
-                ExpiresAt = DateTime.SpecifyKind(DateTime.UtcNow.AddMinutes(expirationMinutes), DateTimeKind.Unspecified),
-                IsRevoked = false,
-                UserId = userId
-            };
-            await _jwtTokenRepo.SaveTokenAsync(tokenEntity, ct);
         }
     }
 }

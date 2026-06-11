@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Application.Interfaces;
 using FirebaseAdmin;
@@ -73,17 +74,25 @@ namespace Infrastructure.Services
                 Console.WriteLine(">>> FirebaseService: Verifying ID Token...");
                 var decodedToken = await _auth.VerifyIdTokenAsync(idToken);
                 Console.WriteLine($">>> FirebaseService: Decoded token for UID: {decodedToken.Uid}");
-                
-                // Fetch user record to get name/picture if not in token
-                var userRecord = await _auth.GetUserAsync(decodedToken.Uid);
-                Console.WriteLine($">>> FirebaseService: Fetched user record for: {userRecord.Email}");
+
+                var email = decodedToken.Claims.GetValueOrDefault("email")?.ToString();
+                var name = decodedToken.Claims.GetValueOrDefault("name")?.ToString()
+                           ?? email?.Split('@')[0];
+                var picture = decodedToken.Claims.GetValueOrDefault("picture")?.ToString();
+
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    throw new InvalidOperationException("Google token does not contain email claim.");
+                }
+
+                Console.WriteLine($">>> FirebaseService: Extracted claims — email: {email}");
 
                 return new FirebaseUserInfo
                 {
                     FirebaseUid = decodedToken.Uid,
-                    Email = userRecord.Email,
-                    Name = userRecord.DisplayName ?? userRecord.Email.Split('@')[0],
-                    Picture = userRecord.PhotoUrl
+                    Email = email,
+                    Name = name ?? email.Split('@')[0],
+                    Picture = picture
                 };
             }
             catch (Exception ex)

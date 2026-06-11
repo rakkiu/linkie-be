@@ -34,6 +34,7 @@ namespace Infrastructure.Seed
                     Email = encryptedEmail,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
                     Role = role,
+                    IsEmailVerified = true,
                     CreatedAt = DateTime.UtcNow,
                 });
             }

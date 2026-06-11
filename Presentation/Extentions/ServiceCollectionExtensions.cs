@@ -4,16 +4,16 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using Domain.Interface; // Thêm namespace này
 using Infrastructure.Repository; // Thêm namespace này
-using Application.Interfaces; // Thêm namespace này
+using Application.Interfaces;
 using Infrastructure.Security;
 using Domain.Interfaces;
 using Infrastructure.Repositories;
-using Infrastructure.Identity; // Add this
+using Infrastructure.Identity;
 using Infrastructure.Services;
 using Infrastructure.Shared;
-using Application.Usecase.Auth.Login;   // Add this
+using Application.Usecase.Auth.Login;
 using Presentation.Services;
-using Infrastructure.Services;
+using Presentation.Middlewares;
 
 namespace Presentation.Extentions
 {
@@ -43,11 +43,13 @@ namespace Presentation.Extentions
             services.AddScoped<IWishwallRepository, WishwallRepository>();
             services.AddScoped<IArFrameRepository, ArFrameRepository>();
             services.AddScoped<IAdminRepository, AdminRepository>();
+            services.AddScoped<ITicketRepository, TicketRepository>();
 
             // Register services
+            services.AddScoped<IExcelTicketParser, ExcelTicketParserService>();
             services.Configure<JwtSettings>(config.GetSection("JwtSettings")); // Configure JwtSettings
             services.AddScoped<IJwtService, JwtService>(); // Register JwtService
-            services.AddScoped<IEmailService, EmailService>(); // Register EmailService
+            services.AddHttpClient<IEmailService, EmailService>(); // Register EmailService (Resend API)
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
             services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
             services.AddScoped<IFirebaseService, FirebaseService>(); // Register FirebaseService
@@ -103,6 +105,9 @@ namespace Presentation.Extentions
 
             // 🔹 Authorization
             services.AddAuthorization();
+
+            // 🔹 Ticket Verification Filter (global, checks [RequireTicket] attribute per-endpoint)
+            services.AddScoped<TicketVerificationFilter>();
 
             return services;
         }

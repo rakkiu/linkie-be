@@ -14,6 +14,7 @@ namespace Domain.Entity
         public int MaxParticipants { get; set; }
         public bool IsWishwallEnabled { get; set; }
         public EventStatus Status { get; set; }
+        public bool RequiresTicket { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<WishwallMessage> WishwallMessages { get; set; } = new List<WishwallMessage>();
@@ -22,5 +23,6 @@ namespace Domain.Entity
         public ICollection<WishwallKeyword> WishwallKeywords { get; set; } = new List<WishwallKeyword>();
         public ICollection<EventParticipant> EventParticipants { get; set; } = new List<EventParticipant>();
         public ICollection<UserEventStat> UserEventStats { get; set; } = new List<UserEventStat>();
+        public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
     }
 }

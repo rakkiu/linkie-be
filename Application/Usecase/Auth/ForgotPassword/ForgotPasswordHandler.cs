@@ -5,6 +5,7 @@ using Application.Model.Admin;
 using Application.Model.WishwallAi;
 using Domain.Interfaces;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 
 namespace Application.Usecase.Auth.ForgotPassword
 {
@@ -13,15 +14,18 @@ namespace Application.Usecase.Auth.ForgotPassword
         private readonly IUserRepository _userRepository;
         private readonly IJwtTokenRepository _jwtTokenRepository;
         private readonly IEmailService _emailService;
+        private readonly string _frontendUrl;
 
         public ForgotPasswordHandler(
             IUserRepository userRepository,
             IJwtTokenRepository jwtTokenRepository,
-            IEmailService emailService)
+            IEmailService emailService,
+            IConfiguration config)
         {
             _userRepository = userRepository;
             _jwtTokenRepository = jwtTokenRepository;
             _emailService = emailService;
+            _frontendUrl = config["FrontendUrl"]?.TrimEnd('/') ?? "http://localhost:5173";
         }
 
         public async Task<Unit> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
@@ -45,7 +49,7 @@ namespace Application.Usecase.Auth.ForgotPassword
 
             await _jwtTokenRepository.SaveResetTokenAsync(tokenEntity, cancellationToken);
 
-            var resetLink = $"https://linkie.app/reset-password?token={resetToken}";
+            var resetLink = $"{_frontendUrl}/reset-password?token={resetToken}";
             var subject = "Reset your password";
             var body = $"Click the link below to reset your password. This link expires in 1 hour.\n\n{resetLink}";
 
