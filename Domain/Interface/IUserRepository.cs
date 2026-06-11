@@ -9,6 +9,7 @@ namespace Domain.Interfaces
         Task<User?> GetByIdWithoutDecryptAsync(Guid id, CancellationToken ct = default);
         Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
         Task<User?> GetByFirebaseUidAsync(string firebaseUid, CancellationToken ct = default);
+        Task<User?> CreateOrGetGoogleUserAsync(User newUser, string plainEmail, CancellationToken ct = default);
         Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
 }

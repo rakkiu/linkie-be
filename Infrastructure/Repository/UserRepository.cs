@@ -3,6 +3,7 @@ using Domain.Interfaces;
 using Infrastructure.Identity;
 using Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Infrastructure.Repositories
 {
@@ -59,6 +60,32 @@ namespace Infrastructure.Repositories
         {
             user.Email = EncryptionHelper.DecryptDeterministic(user.Email);
             user.Name = EncryptionHelper.Decrypt(user.Name);
+        }
+
+        public async Task<User?> CreateOrGetGoogleUserAsync(User newUser, string plainEmail, CancellationToken ct = default)
+        {
+            try
+            {
+                await _db.Users.AddAsync(newUser, ct);
+                await _db.SaveChangesAsync(ct);
+                newUser.Email = EncryptionHelper.DecryptDeterministic(newUser.Email);
+                newUser.Name = EncryptionHelper.Decrypt(newUser.Name);
+                return newUser;
+            }
+            catch (DbUpdateException ex)
+                when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
+            {
+                var existingUser = await GetByEmailAsync(plainEmail, ct)
+                    ?? throw new InvalidOperationException("Duplicate key but user not found by email.");
+
+                if (string.IsNullOrEmpty(existingUser.FirebaseUid))
+                {
+                    existingUser.FirebaseUid = newUser.FirebaseUid;
+                    await _db.SaveChangesAsync(ct);
+                }
+
+                return existingUser;
+            }
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)
