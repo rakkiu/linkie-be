@@ -23,8 +23,18 @@ namespace Infrastructure.Repository
                 .FirstOrDefaultAsync(ct);
 
         public async Task<bool> HasValidTicketAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-            => await _db.Tickets
+        {
+            var requiresTicket = await _db.Events
+                .Where(e => e.Id == eventId)
+                .Select(e => e.RequiresTicket)
+                .FirstOrDefaultAsync(ct);
+
+            if (!requiresTicket)
+                return true;
+
+            return await _db.Tickets
                 .AnyAsync(t => t.UserId == userId && t.EventId == eventId && t.Status == TicketStatus.ACTIVE, ct);
+        }
 
         public async Task AddRangeAsync(List<Ticket> tickets, CancellationToken ct = default)
         {

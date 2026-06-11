@@ -14,6 +14,7 @@ namespace Domain.Entity
         public int MaxParticipants { get; set; }
         public bool IsWishwallEnabled { get; set; }
         public EventStatus Status { get; set; }
+        public bool RequiresTicket { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<WishwallMessage> WishwallMessages { get; set; } = new List<WishwallMessage>();
