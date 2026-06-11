@@ -49,7 +49,7 @@ namespace Presentation.Extentions
             services.AddScoped<IExcelTicketParser, ExcelTicketParserService>();
             services.Configure<JwtSettings>(config.GetSection("JwtSettings")); // Configure JwtSettings
             services.AddScoped<IJwtService, JwtService>(); // Register JwtService
-            services.AddScoped<IEmailService, EmailService>(); // Register EmailService
+            services.AddHttpClient<IEmailService, EmailService>(); // Register EmailService (Resend API)
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
             services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
             services.AddScoped<IFirebaseService, FirebaseService>(); // Register FirebaseService

@@ -1,47 +1,42 @@
 using Application.Interfaces;
 using Microsoft.Extensions.Configuration;
-using System.Net;
-using System.Net.Mail;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 
 namespace Infrastructure.Services
 {
     public class EmailService : IEmailService
     {
+        private readonly string _apiKey;
         private readonly string _fromAddress;
-        private readonly string _password;
-        private readonly string _host;
-        private readonly int _port;
-        private readonly bool _enableSsl;
+        private readonly HttpClient _httpClient;
 
-        public EmailService(IConfiguration config)
+        public EmailService(IConfiguration config, HttpClient httpClient)
         {
-            _fromAddress = config["EmailSettings:FromAddress"] ?? "";
-            _password = config["EmailSettings:Password"] ?? "";
-            _host = config["EmailSettings:Host"] ?? "smtp.gmail.com";
-            _port = int.TryParse(config["EmailSettings:Port"], out var p) ? p : 587;
-            _enableSsl = !bool.TryParse(config["EmailSettings:EnableSsl"], out var s) || s;
+            _apiKey = config["Resend:ApiKey"] ?? "";
+            _fromAddress = config["Resend:FromAddress"] ?? "";
+            _httpClient = httpClient;
         }
 
         public async Task SendAsync(string to, string subject, string body)
         {
-            if (string.IsNullOrWhiteSpace(_fromAddress) || string.IsNullOrWhiteSpace(_password))
+            var payload = new
             {
-                Console.WriteLine($"[Email] Skipped — SMTP not configured. To: {to} | Subject: {subject}");
-                return;
-            }
-
-            using var client = new SmtpClient(_host, _port)
-            {
-                Credentials = new NetworkCredential(_fromAddress, _password),
-                EnableSsl = _enableSsl
+                from = _fromAddress,
+                to = new[] { to },
+                subject,
+                html = body
             };
 
-            using var message = new MailMessage(_fromAddress, to, subject, body)
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails")
             {
-                IsBodyHtml = true
+                Headers = { { "Authorization", $"Bearer {_apiKey}" } },
+                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
             };
 
-            await client.SendMailAsync(message);
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
         }
 
         public async Task SendWithAttachmentAsync(
@@ -51,24 +46,34 @@ namespace Infrastructure.Services
             string attachmentFileName,
             Stream attachmentStream)
         {
-            if (string.IsNullOrWhiteSpace(_fromAddress) || string.IsNullOrWhiteSpace(_password))
-            {
-                Console.WriteLine($"[Email] Skipped — SMTP not configured. To: {to} | Subject: {subject} | Attachment: {attachmentFileName}");
-                return;
-            }
+            using var ms = new MemoryStream();
+            await attachmentStream.CopyToAsync(ms);
+            var base64Content = Convert.ToBase64String(ms.ToArray());
 
-            using var client = new SmtpClient(_host, _port)
+            var payload = new
             {
-                Credentials = new NetworkCredential(_fromAddress, _password),
-                EnableSsl = _enableSsl
+                from = _fromAddress,
+                to = new[] { to },
+                subject,
+                html = body,
+                attachments = new[]
+                {
+                    new
+                    {
+                        filename = attachmentFileName,
+                        content = base64Content
+                    }
+                }
             };
 
-            using var message = new MailMessage(_fromAddress, to, subject, body)
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails")
             {
-                IsBodyHtml = true
+                Headers = { { "Authorization", $"Bearer {_apiKey}" } },
+                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
             };
-            message.Attachments.Add(new Attachment(attachmentStream, attachmentFileName));
-            await client.SendMailAsync(message);
+
+            var response = await _httpClient.SendAsync(request);
+            response.EnsureSuccessStatusCode();
         }
     }
 }
