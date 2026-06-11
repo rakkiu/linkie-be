@@ -43,16 +43,41 @@ namespace Presentation.Controllers.Auth
 
         [HttpPost("google-login")]
         [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<ActionResult<ApiResponse<LoginResponseDto>>> GoogleLogin([FromBody] GoogleLoginCommand command)
         {
-            var res = await _mediator.Send(command);
-            return Ok(new ApiResponse<LoginResponseDto>
+            try
             {
-                StatusCode = 200,
-                Message = "Google login successful",
-                Data = res,
-                ResponsedAt = DateTime.UtcNow
-            });
+                var res = await _mediator.Send(command);
+                return Ok(new ApiResponse<LoginResponseDto>
+                {
+                    StatusCode = 200,
+                    Message = "Google login successful",
+                    Data = res,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = 400,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
         }
 
         [HttpPost("logout")]

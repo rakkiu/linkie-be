@@ -23,16 +23,23 @@ namespace Infrastructure.Security
             if (string.IsNullOrEmpty(cipherText))
                 return cipherText;
 
-            var cipherBytes = Convert.FromBase64String(cipherText);
-            using var aes = Aes.Create();
-            aes.Key = _key!;
-            aes.IV = _fixedIv; // phải dùng cùng IV với lúc encrypt
-            aes.Mode = CipherMode.CBC;
-            aes.Padding = PaddingMode.PKCS7;
+            try
+            {
+                var cipherBytes = Convert.FromBase64String(cipherText);
+                using var aes = Aes.Create();
+                aes.Key = _key!;
+                aes.IV = _fixedIv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
 
-            using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-            var plainBytes = decryptor.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
-            return Encoding.UTF8.GetString(plainBytes);
+                using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+                var plainBytes = decryptor.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
+                return Encoding.UTF8.GetString(plainBytes);
+            }
+            catch
+            {
+                return cipherText;
+            }
         }
 
         public static string EncryptDeterministic(string plainText)
