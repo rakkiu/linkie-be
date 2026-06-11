@@ -32,6 +32,16 @@ namespace Infrastructure.Identity
                 .Property(u => u.Role)
                 .HasConversion<string>();
 
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique()
+                .HasDatabaseName("idx_users_email");
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.FirebaseUid)
+                .IsUnique()
+                .HasDatabaseName("idx_users_firebase_uid");
+
             modelBuilder.Entity<Event>()
                 .Property(e => e.Status)
                 .HasConversion<string>();

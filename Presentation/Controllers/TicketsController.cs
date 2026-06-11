@@ -1,3 +1,4 @@
+using Application.Usecase.EventManagement.ToggleTicketVerification;
 using Application.Usecase.Tickets.CheckUserTicket;
 using Application.Usecase.Tickets.GetEventTickets;
 using Application.Usecase.Tickets.ImportTickets;
@@ -144,6 +145,52 @@ namespace Presentation.Controllers
             }
         }
 
+        [HttpPatch("api/admin/events/{eventId:guid}/ticket-verification")]
+        [Authorize(Roles = "Admin")]
+        [ProducesResponseType(typeof(ApiResponse<ToggleTicketVerificationResponseDto>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<ToggleTicketVerificationResponseDto>>> ToggleTicketVerification(
+            Guid eventId,
+            [FromBody] ToggleTicketVerificationRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var command = new ToggleTicketVerificationCommand(eventId, request.RequiresTicket);
+                var result = await _mediator.Send(command, cancellationToken);
+
+                return Ok(new ApiResponse<ToggleTicketVerificationResponseDto>
+                {
+                    StatusCode = 200,
+                    Message = result.Message,
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while toggling ticket verification",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
         [HttpGet("api/admin/events/{eventId:guid}/tickets")]
         [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(ApiResponse<GetEventTicketsResponse>), 200)]
@@ -187,4 +234,6 @@ namespace Presentation.Controllers
             }
         }
     }
+
+    public record ToggleTicketVerificationRequest(bool RequiresTicket);
 }

@@ -14,5 +14,7 @@ namespace Application.Usecase.Tickets.CheckUserTicket
         public string? TicketCode { get; set; }
         public string? TicketStatus { get; set; }
         public string? Message { get; set; }
+        public Guid EventId { get; set; }
+        public bool RequiresTicket { get; set; }
     }
 }
