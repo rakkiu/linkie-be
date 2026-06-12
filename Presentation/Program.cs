@@ -35,7 +35,8 @@ namespace Presentation
                               "https://linkie-fe.onrender.com",
                               "https://linkie-fe.vercel.app",
                               "https://linkie.digital",
-                              "http://localhost:5173")
+                              "http://localhost:5173",
+                              "https://linkie-fe-git-release-hieuunhann.vercel.app")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials());
