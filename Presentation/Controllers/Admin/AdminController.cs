@@ -11,7 +11,7 @@ using Application.Usecase.Admin.UserManagement.DeleteUser;
 using Application.Model.Admin;
 using Application.Model.WishwallAi;
 using Infrastructure.Identity;
-using Application.Usecase.Admin.FanInsights;
+using Application.Usecase.Admin.Dashboard;
 using Application.Usecase.ArFrame.DeleteFrame;
 using Application.Usecase.ArFrame.GetFrames;
 using Application.Usecase.ArFrame.ToggleFrame;
