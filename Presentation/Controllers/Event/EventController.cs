@@ -7,6 +7,7 @@ using Application.Usecase.Wishwall.DisplayOnLed;
 using Application.Usecase.Wishwall.GetMessages;
 using Application.Usecase.Wishwall.GetPendingMessages;
 using Application.Usecase.Wishwall.SendMessage;
+using Application.Usecase.EventRating;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -439,6 +440,106 @@ namespace Presentation.Controllers.Event
                 });
             }
         }
+
+        // GET /api/events/{eventId}/rating/status
+        [HttpGet("{eventId:guid}/rating/status")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
+        public async Task<ActionResult<ApiResponse<bool>>> CheckRatingStatus(
+            Guid eventId,
+            CancellationToken cancellationToken)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized(new ApiResponse<object> { StatusCode = 401, Message = "Unauthorized" });
+
+            var hasRated = await _mediator.Send(new CheckRatingStatusQuery { EventId = eventId, UserId = userId }, cancellationToken);
+
+            return Ok(new ApiResponse<bool>
+            {
+                StatusCode = 200,
+                Message = "Check rating status successfully.",
+                Data = hasRated,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+
+        // POST /api/events/{eventId}/rating
+        [HttpPost("{eventId:guid}/rating")]
+        [Authorize]
+        [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        public async Task<ActionResult<ApiResponse<bool>>> SubmitRating(
+            Guid eventId,
+            [FromBody] SubmitRatingRequest request,
+            CancellationToken cancellationToken)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized(new ApiResponse<object> { StatusCode = 401, Message = "Unauthorized" });
+
+            try
+            {
+                var result = await _mediator.Send(new SubmitRatingCommand
+                {
+                    EventId = eventId,
+                    UserId = userId,
+                    StarRating = request.StarRating
+                }, cancellationToken);
+
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = 200,
+                    Message = "Rating submitted successfully.",
+                    Data = result,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = 400,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // POST /api/events/{eventId}/analytics/action
+        [HttpPost("{eventId:guid}/analytics/action")]
+        [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        public async Task<ActionResult<ApiResponse<bool>>> RecordEventAction(
+            Guid eventId,
+            [FromBody] RecordEventActionRequest request,
+            CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(new Application.Usecase.EventAnalytics.RecordEventActionCommand
+            {
+                EventId = eventId,
+                ActionType = request.ActionType
+            }, cancellationToken);
+
+            return Ok(new ApiResponse<bool>
+            {
+                StatusCode = 200,
+                Message = "Event action recorded.",
+                Data = result,
+                ResponsedAt = DateTime.UtcNow
+            });
+        }
+    }
+
+    public class RecordEventActionRequest
+    {
+        public string ActionType { get; set; } = string.Empty;
+    }
+
+    public class SubmitRatingRequest
+    {
+        public int StarRating { get; set; }
     }
 
     public class SendWishwallMessageRequest

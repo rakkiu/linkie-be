@@ -44,6 +44,8 @@ namespace Presentation.Extentions
             services.AddScoped<IArFrameRepository, ArFrameRepository>();
             services.AddScoped<IAdminRepository, AdminRepository>();
             services.AddScoped<ITicketRepository, TicketRepository>();
+            services.AddScoped<IOrganizerRepository, OrganizerRepository>();
+            services.AddScoped<IEventRatingRepository, EventRatingRepository>();
 
             // Register services
             services.AddScoped<IExcelTicketParser, ExcelTicketParserService>();

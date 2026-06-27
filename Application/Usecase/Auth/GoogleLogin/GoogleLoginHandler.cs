@@ -72,7 +72,15 @@ namespace Application.Usecase.Auth.GoogleLogin
             string plainName = user.Name;
 
             // 3. Generate tokens (Ensure we use PLAIN TEXT email/name)
-            var accessToken = _jwtService.GenerateAccessToken(user.Id, plainEmail, plainName, user.Role.ToString());
+            Guid? managedEventId = null;
+            string? planTier = null;
+            if (user.Role == Domain.Enums.UserRole.Organizer)
+            {
+                managedEventId = user.ManagedEventId;
+                planTier = user.PlanTier.ToString().ToLower();
+            }
+
+            var accessToken = _jwtService.GenerateAccessToken(user.Id, plainEmail, plainName, user.Role.ToString(), managedEventId, planTier);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
             var refreshTokenExpirationDays = _jwtService.GetRefreshTokenExpirationDays();

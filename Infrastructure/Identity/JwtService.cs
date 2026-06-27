@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Application.Interfaces;
 using Infrastructure.Shared;
 using Microsoft.Extensions.Options;
@@ -45,6 +45,41 @@ namespace Infrastructure.Identity
             if (!string.IsNullOrEmpty(role))
                 claims.Add(new Claim(System.Security.Claims.ClaimTypes.Role, role));
             
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _settings.Issuer,
+                audience: _settings.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(_settings.AccessTokenExpiresMinutes),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        /// <summary>Overload cho Organizer: thêm claim managed_event_id và plan_tier vào JWT.</summary>
+        public string GenerateAccessToken(Guid userId, string email, string? fullName, string? role, Guid? managedEventId, string? planTier)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, email),
+                new Claim("FullName", fullName ?? string.Empty),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+            };
+
+            if (!string.IsNullOrEmpty(role))
+                claims.Add(new Claim(System.Security.Claims.ClaimTypes.Role, role));
+
+            if (managedEventId.HasValue)
+                claims.Add(new Claim("managed_event_id", managedEventId.Value.ToString()));
+
+            if (!string.IsNullOrEmpty(planTier))
+                claims.Add(new Claim("plan_tier", planTier));
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SecretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

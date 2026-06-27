@@ -22,6 +22,8 @@ namespace Infrastructure.Identity
         public DbSet<UserEventStat> UserEventStats => Set<UserEventStat>();
         public DbSet<JwtToken> JwtTokens => Set<JwtToken>();
         public DbSet<Ticket> Tickets => Set<Ticket>();
+        public DbSet<PricingRequest> PricingRequests => Set<PricingRequest>();
+        public DbSet<EventRating> EventRatings => Set<EventRating>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -42,6 +44,21 @@ namespace Infrastructure.Identity
                 .IsUnique()
                 .HasDatabaseName("idx_users_firebase_uid");
 
+            // Unique index for Organizer username/handle
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique()
+                .HasFilter("\"Username\" IS NOT NULL")
+                .HasDatabaseName("idx_users_username");
+
+            // Organizer → ManagedEvent (nullable FK)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.ManagedEvent)
+                .WithMany()
+                .HasForeignKey(u => u.ManagedEventId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<Event>()
                 .Property(e => e.Status)
                 .HasConversion<string>();
@@ -52,6 +69,10 @@ namespace Infrastructure.Identity
 
             modelBuilder.Entity<Ticket>()
                 .Property(t => t.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<PricingRequest>()
+                .Property(p => p.Status)
                 .HasConversion<string>();
 
             // Ticket relationships
@@ -156,6 +177,19 @@ namespace Infrastructure.Identity
                 .HasOne(j => j.User)
                 .WithMany(u => u.JwtTokens)
                 .HasForeignKey(j => j.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // EventRating relationships
+            modelBuilder.Entity<EventRating>()
+                .HasOne(er => er.Event)
+                .WithMany()
+                .HasForeignKey(er => er.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<EventRating>()
+                .HasOne(er => er.User)
+                .WithMany()
+                .HasForeignKey(er => er.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
