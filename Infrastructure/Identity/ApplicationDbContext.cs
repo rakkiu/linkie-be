@@ -24,6 +24,7 @@ namespace Infrastructure.Identity
         public DbSet<Ticket> Tickets => Set<Ticket>();
         public DbSet<PricingRequest> PricingRequests => Set<PricingRequest>();
         public DbSet<EventRating> EventRatings => Set<EventRating>();
+        public DbSet<UsageLog> UsageLogs => Set<UsageLog>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -178,6 +179,21 @@ namespace Infrastructure.Identity
                 .WithMany(u => u.JwtTokens)
                 .HasForeignKey(j => j.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // UsageLog relationships
+            modelBuilder.Entity<UsageLog>()
+                .HasOne(ul => ul.User)
+                .WithMany()
+                .HasForeignKey(ul => ul.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UsageLog>()
+                .HasIndex(ul => new { ul.UserId, ul.CreatedAt })
+                .HasDatabaseName("idx_usage_user_created");
+
+            modelBuilder.Entity<UsageLog>()
+                .HasIndex(ul => ul.CreatedAt)
+                .HasDatabaseName("idx_usage_created");
 
             // EventRating relationships
             modelBuilder.Entity<EventRating>()

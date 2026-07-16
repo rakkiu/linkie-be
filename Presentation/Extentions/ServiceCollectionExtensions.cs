@@ -14,6 +14,7 @@ using Infrastructure.Shared;
 using Application.Usecase.Auth.Login;
 using Presentation.Services;
 using Presentation.Middlewares;
+using Presentation.PipelineBehaviors;
 
 namespace Presentation.Extentions
 {
@@ -46,6 +47,7 @@ namespace Presentation.Extentions
             services.AddScoped<ITicketRepository, TicketRepository>();
             services.AddScoped<IOrganizerRepository, OrganizerRepository>();
             services.AddScoped<IEventRatingRepository, EventRatingRepository>();
+            services.AddScoped<IUsageLogRepository, UsageLogRepository>();
 
             // Register services
             services.AddScoped<IExcelTicketParser, ExcelTicketParserService>();
@@ -58,9 +60,14 @@ namespace Presentation.Extentions
             services.AddScoped<IWishwallNotifier, WishwallNotifier>(); // Register WishwallNotifier (SignalR)
             services.AddScoped<IWishwallAiModerationService, WishwallAiModerationService>();
             services.AddHttpClient("Gemini");
+            services.AddHttpContextAccessor();
 
             // 🔹 MediatR
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly));
+            services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly);
+                cfg.AddOpenBehavior(typeof(UsageLogPipelineBehavior<,>));
+            });
 
             // 🔹 JWT Authentication
             var secretKey = config["JwtSettings:SecretKey"];
