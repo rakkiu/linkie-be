@@ -2,6 +2,7 @@ using Domain.Entity;
 using Domain.Enums;
 using Domain.Interface;
 using Infrastructure.Identity;
+using Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repository
@@ -56,13 +57,32 @@ namespace Infrastructure.Repository
             return await query.Select(ul => ul.UserId).Distinct().CountAsync(ct);
         }
 
-        public async Task<List<(Guid UserId, string Action, DateTime CreatedAt)>> GetRecentUsageAsync(int limit, CancellationToken ct = default)
+        public async Task<List<object>> GetRecentUsageAsync(int limit, CancellationToken ct = default)
         {
-            return await _context.UsageLogs
+            var logs = await _context.UsageLogs
+                .Include(ul => ul.User)
                 .OrderByDescending(ul => ul.CreatedAt)
                 .Take(limit)
-                .Select(ul => new ValueTuple<Guid, string, DateTime>(ul.UserId, ul.Action, ul.CreatedAt))
                 .ToListAsync(ct);
+                
+            var result = logs.Select(ul => new
+            {
+                ul.Id,
+                ul.Action,
+                ul.CreatedAt,
+                ul.Metadata,
+                ul.EntityId,
+                ul.EntityType,
+                User = ul.User == null ? null : new
+                {
+                    FirstName = EncryptionHelper.Decrypt(ul.User.Name),
+                    LastName = "",
+                    ul.User.Role,
+                    AvatarUrl = (string?)null
+                }
+            }).Cast<object>().ToList();
+            
+            return result;
         }
     }
 }

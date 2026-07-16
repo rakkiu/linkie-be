@@ -11,6 +11,6 @@ namespace Domain.Interface
         // KPI queries
         Task<int> CountDistinctBusinessesAsync(DateTime? start, DateTime? end, CancellationToken ct = default);
         Task<int> CountDistinctStaffAsync(DateTime? start, DateTime? end, CancellationToken ct = default);
-        Task<List<(Guid UserId, string Action, DateTime CreatedAt)>> GetRecentUsageAsync(int limit, CancellationToken ct = default);
+        Task<List<object>> GetRecentUsageAsync(int limit, CancellationToken ct = default);
     }
 }

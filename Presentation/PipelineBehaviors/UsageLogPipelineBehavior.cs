@@ -21,16 +21,14 @@ namespace Presentation.PipelineBehaviors
 
         public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
         {
-            var result = await next();
-
             if (ShouldSkipLogging(request))
-                return result;
+                return await next();
 
             var httpContext = _httpContextAccessor.HttpContext;
             var userIdClaim = httpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdClaim))
-                return result;
+                return await next();
 
             var log = new UsageLog
             {
@@ -46,11 +44,34 @@ namespace Presentation.PipelineBehaviors
                 IpAddress = httpContext?.Connection.RemoteIpAddress?.ToString(),
                 CreatedAt = DateTime.UtcNow
             };
+            try
+            {
+                var result = await next();
 
-            await _repo.AddAsync(log, cancellationToken);
-            await _repo.SaveChangesAsync(cancellationToken);
+                await _repo.AddAsync(log, cancellationToken);
+                await _repo.SaveChangesAsync(cancellationToken);
 
-            return result;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                log.Action = log.Action + "Fail";
+                var errorMetadata = new
+                {
+                    Error = ex.Message,
+                    OriginalRequest = request
+                };
+                log.Metadata = JsonSerializer.Serialize(errorMetadata, new JsonSerializerOptions
+                {
+                    WriteIndented = false,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                });
+
+                await _repo.AddAsync(log, cancellationToken);
+                await _repo.SaveChangesAsync(cancellationToken);
+                
+                throw;
+            }
         }
 
         private static bool ShouldSkipLogging(TRequest request)
