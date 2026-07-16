@@ -6,17 +6,18 @@ using MediatR;
 
 namespace Application.Usecase.Admin.Dashboard
 {
-    public record ClearLedMessagesCommand(Guid EventId) : IRequest;
+    public record ClearLedMessagesCommand(Guid EventId) : IRequest<bool>;
 
-    public class ClearLedMessagesHandler : IRequestHandler<ClearLedMessagesCommand>
+    public class ClearLedMessagesHandler : IRequestHandler<ClearLedMessagesCommand, bool>
     {
         private readonly IAdminRepository _repo;
 
         public ClearLedMessagesHandler(IAdminRepository repo) => _repo = repo;
 
-        public async Task Handle(ClearLedMessagesCommand request, CancellationToken cancellationToken)
+        public async Task<bool> Handle(ClearLedMessagesCommand request, CancellationToken cancellationToken)
         {
             await _repo.ClearLedMessagesAsync(request.EventId, cancellationToken);
+            return true;
         }
     }
 }
