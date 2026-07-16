@@ -1,11 +1,13 @@
-﻿using Application.Model.Auth.Login;
+using Application.Model.Auth.Login;
 using Application.Model.Auth.Token;
+using Application.Usecase.Auth.GoogleLogin;
 using Application.Usecase.Auth.ChangePassword;
 using Application.Usecase.Auth.ForgotPassword;
 using Application.Usecase.Auth.Login;
 using Application.Usecase.Auth.Logout;
 using Application.Usecase.Auth.Register;
 using Application.Usecase.Auth.ResetPassword;
+using Application.Usecase.Auth.EmailVerification;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +39,45 @@ namespace Presentation.Controllers.Auth
                 Data = res,
                 ResponsedAt = DateTime.UtcNow
             });
+        }
+
+        [HttpPost("google-login")]
+        [ProducesResponseType(typeof(ApiResponse<LoginResponseDto>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<LoginResponseDto>>> GoogleLogin([FromBody] GoogleLoginCommand command)
+        {
+            try
+            {
+                var res = await _mediator.Send(command);
+                return Ok(new ApiResponse<LoginResponseDto>
+                {
+                    StatusCode = 200,
+                    Message = "Google login successful",
+                    Data = res,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = 400,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
         }
 
         [HttpPost("logout")]
@@ -259,6 +300,70 @@ namespace Presentation.Controllers.Auth
                     StatusCode = 500,
                     Message = "An unexpected error occurred while changing password.",
                     Data = (object?)null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        // ---------------- VERIFY EMAIL ----------------
+        [HttpPost("verify-email")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<ActionResult<ApiResponse<object>>> VerifyEmail(
+            [FromBody] VerifyEmailRequest request)
+        {
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.Token))
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        StatusCode = 400,
+                        Message = "Verification token is missing.",
+                        Data = null,
+                        ResponsedAt = DateTime.UtcNow
+                    });
+                }
+
+                await _mediator.Send(new VerifyEmailCommand(request.Token));
+
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = 200,
+                    Message = "Email verified successfully.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = 400,
+                    Message = ex.Message,
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    StatusCode = 404,
+                    Message = "User not found.",
+                    Data = null,
+                    ResponsedAt = DateTime.UtcNow
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    StatusCode = 500,
+                    Message = "An error occurred while processing your request.",
+                    Data = null,
                     ResponsedAt = DateTime.UtcNow
                 });
             }

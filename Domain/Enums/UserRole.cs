@@ -4,6 +4,8 @@ namespace Domain.Enums
     {
         Admin,
         Organizer,
-        Attendee
+        Staff,
+        Attendee,
+        LED
     }
 }

@@ -28,7 +28,7 @@
         /// <value>
         /// The data.
         /// </value>
-        public T Data { get; set; }
+        public T? Data { get; set; }
 
         /// <summary>
         /// Gets or sets the responsed at.

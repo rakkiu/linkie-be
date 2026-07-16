@@ -1,5 +1,7 @@
 using Application.Interfaces;
 using Domain.Interface;
+using Application.Model.Admin;
+using Application.Model.WishwallAi;
 using MediatR;
 
 namespace Application.Usecase.Admin.Wishwall
@@ -11,6 +13,7 @@ namespace Application.Usecase.Admin.Wishwall
         public string Message { get; set; } = string.Empty;
         public string Sentiment { get; set; } = string.Empty;
         public bool IsHidden { get; set; }
+        public bool IsApproved { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 
@@ -40,6 +43,7 @@ namespace Application.Usecase.Admin.Wishwall
                 Message = m.Message,
                 Sentiment = m.Sentiment.ToString().ToLower(),
                 IsHidden = m.IsHidden,
+                IsApproved = m.IsApproved,
                 CreatedAt = m.CreatedAt
             }).ToList();
         }

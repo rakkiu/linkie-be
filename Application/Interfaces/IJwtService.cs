@@ -1,10 +1,13 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 
 namespace Application.Interfaces
 {
     public interface IJwtService
     {
         string GenerateAccessToken(Guid userId, string email, string? fullName = null, string? role = null);
+
+        /// <summary>Overload cho Organizer: thêm claim managed_event_id và plan_tier vào JWT.</summary>
+        string GenerateAccessToken(Guid userId, string email, string? fullName, string? role, Guid? managedEventId, string? planTier);
 
         /// <summary>
         /// Generates the refresh token.

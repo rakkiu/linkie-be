@@ -16,8 +16,23 @@ namespace Infrastructure.Repository
                 .Where(f => f.EventId == eventId && f.IsActive)
                 .ToListAsync(ct);
 
+        public async Task<List<ArFrame>> GetAllByEventIdAsync(Guid eventId, CancellationToken ct = default)
+            => await _db.ArFrames
+                .Where(f => f.EventId == eventId)
+                .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync(ct);
+
         public async Task<ArFrame?> GetByIdAsync(Guid frameId, CancellationToken ct = default)
             => await _db.ArFrames.FirstOrDefaultAsync(f => f.Id == frameId, ct);
+
+        public async Task AddAsync(ArFrame frame, CancellationToken ct = default)
+            => await _db.ArFrames.AddAsync(frame, ct);
+
+        public Task DeleteAsync(ArFrame frame, CancellationToken ct = default)
+        {
+            _db.ArFrames.Remove(frame);
+            return Task.CompletedTask;
+        }
 
         public async Task AddUsageAsync(FrameUsage usage, CancellationToken ct = default)
             => await _db.FrameUsages.AddAsync(usage, ct);

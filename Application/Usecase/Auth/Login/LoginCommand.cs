@@ -1,4 +1,4 @@
-﻿using Application.Model.Auth.Login;
+using Application.Model.Auth.Login;
 using MediatR;
 
 namespace Application.Usecase.Auth.Login

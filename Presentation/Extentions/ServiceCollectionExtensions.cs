@@ -4,14 +4,17 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using Domain.Interface; // Thêm namespace này
 using Infrastructure.Repository; // Thêm namespace này
-using Application.Interfaces; // Thêm namespace này
+using Application.Interfaces;
 using Infrastructure.Security;
 using Domain.Interfaces;
 using Infrastructure.Repositories;
-using Infrastructure.Identity; // Add this
+using Infrastructure.Identity;
 using Infrastructure.Services;
 using Infrastructure.Shared;
-using Application.Usecase.Auth.Login;   // Add this
+using Application.Usecase.Auth.Login;
+using Presentation.Services;
+using Presentation.Middlewares;
+using Presentation.PipelineBehaviors;
 
 namespace Presentation.Extentions
 {
@@ -41,15 +44,30 @@ namespace Presentation.Extentions
             services.AddScoped<IWishwallRepository, WishwallRepository>();
             services.AddScoped<IArFrameRepository, ArFrameRepository>();
             services.AddScoped<IAdminRepository, AdminRepository>();
+            services.AddScoped<ITicketRepository, TicketRepository>();
+            services.AddScoped<IOrganizerRepository, OrganizerRepository>();
+            services.AddScoped<IEventRatingRepository, EventRatingRepository>();
+            services.AddScoped<IUsageLogRepository, UsageLogRepository>();
 
             // Register services
+            services.AddScoped<IExcelTicketParser, ExcelTicketParserService>();
             services.Configure<JwtSettings>(config.GetSection("JwtSettings")); // Configure JwtSettings
             services.AddScoped<IJwtService, JwtService>(); // Register JwtService
-            services.AddScoped<IEmailService, EmailService>(); // Register EmailService
+            services.AddHttpClient<IEmailService, EmailService>(); // Register EmailService (Resend API)
             services.AddScoped<IEncryptionService, EncryptionService>(); // Register EncryptionService
+            services.AddScoped<ICloudinaryService, CloudinaryService>(); // Register CloudinaryService
+            services.AddScoped<IFirebaseService, FirebaseService>(); // Register FirebaseService
+            services.AddScoped<IWishwallNotifier, WishwallNotifier>(); // Register WishwallNotifier (SignalR)
+            services.AddScoped<IWishwallAiModerationService, WishwallAiModerationService>();
+            services.AddHttpClient("Gemini");
+            services.AddHttpContextAccessor();
 
             // 🔹 MediatR
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly));
+            services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssembly(typeof(LoginHandler).Assembly);
+                cfg.AddOpenBehavior(typeof(UsageLogPipelineBehavior<,>));
+            });
 
             // 🔹 JWT Authentication
             var secretKey = config["JwtSettings:SecretKey"];
@@ -70,14 +88,35 @@ namespace Presentation.Extentions
                             ValidAudience = config["JwtSettings:Audience"],
                             IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
                             ClockSkew = TimeSpan.FromSeconds(30),
-                            RoleClaimType = "RoleCode",
+                            RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
+                        };
+                        // Allow SignalR to pass JWT via query string (?access_token=...)
+                        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                        {
+                            OnMessageReceived = ctx =>
+                            {
+                                var accessToken = ctx.Request.Query["access_token"];
+                                var path = ctx.HttpContext.Request.Path;
+                                if (!string.IsNullOrEmpty(accessToken) &&
+                                    path.StartsWithSegments("/hubs"))
+                                {
+                                    ctx.Token = accessToken;
+                                }
+                                return Task.CompletedTask;
+                            }
                         };
                     });
             }
 
+            // 🔹 SignalR
+            services.AddSignalR();
+
             // 🔹 Authorization
             services.AddAuthorization();
+
+            // 🔹 Ticket Verification Filter (global, checks [RequireTicket] attribute per-endpoint)
+            services.AddScoped<TicketVerificationFilter>();
 
             return services;
         }

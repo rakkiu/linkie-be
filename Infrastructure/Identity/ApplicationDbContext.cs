@@ -13,6 +13,7 @@ namespace Infrastructure.Identity
         public DbSet<User> Users => Set<User>();
         public DbSet<Event> Events => Set<Event>();
         public DbSet<WishwallMessage> WishwallMessages => Set<WishwallMessage>();
+        public DbSet<WishwallAiLog> WishwallAiLogs => Set<WishwallAiLog>();
         public DbSet<ArFrame> ArFrames => Set<ArFrame>();
         public DbSet<FrameUsage> FrameUsages => Set<FrameUsage>();
         public DbSet<WishwallKeyword> WishwallKeywords => Set<WishwallKeyword>();
@@ -20,6 +21,10 @@ namespace Infrastructure.Identity
         public DbSet<SystemLog> SystemLogs => Set<SystemLog>();
         public DbSet<UserEventStat> UserEventStats => Set<UserEventStat>();
         public DbSet<JwtToken> JwtTokens => Set<JwtToken>();
+        public DbSet<Ticket> Tickets => Set<Ticket>();
+        public DbSet<PricingRequest> PricingRequests => Set<PricingRequest>();
+        public DbSet<EventRating> EventRatings => Set<EventRating>();
+        public DbSet<UsageLog> UsageLogs => Set<UsageLog>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -30,6 +35,31 @@ namespace Infrastructure.Identity
                 .Property(u => u.Role)
                 .HasConversion<string>();
 
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique()
+                .HasDatabaseName("idx_users_email");
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.FirebaseUid)
+                .IsUnique()
+                .HasDatabaseName("idx_users_firebase_uid");
+
+            // Unique index for Organizer username/handle
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique()
+                .HasFilter("\"Username\" IS NOT NULL")
+                .HasDatabaseName("idx_users_username");
+
+            // Organizer → ManagedEvent (nullable FK)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.ManagedEvent)
+                .WithMany()
+                .HasForeignKey(u => u.ManagedEventId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<Event>()
                 .Property(e => e.Status)
                 .HasConversion<string>();
@@ -37,6 +67,32 @@ namespace Infrastructure.Identity
             modelBuilder.Entity<WishwallMessage>()
                 .Property(w => w.Sentiment)
                 .HasConversion<string>();
+
+            modelBuilder.Entity<Ticket>()
+                .Property(t => t.Status)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<PricingRequest>()
+                .Property(p => p.Status)
+                .HasConversion<string>();
+
+            // Ticket relationships
+            modelBuilder.Entity<Ticket>()
+                .HasIndex(t => new { t.EventId, t.TicketCode })
+                .IsUnique();
+
+            modelBuilder.Entity<Ticket>()
+                .HasOne(t => t.Event)
+                .WithMany(e => e.Tickets)
+                .HasForeignKey(t => t.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Ticket>()
+                .HasOne(t => t.User)
+                .WithMany(u => u.Tickets)
+                .HasForeignKey(t => t.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // WishwallMessage relationships
             modelBuilder.Entity<WishwallMessage>()
@@ -122,6 +178,34 @@ namespace Infrastructure.Identity
                 .HasOne(j => j.User)
                 .WithMany(u => u.JwtTokens)
                 .HasForeignKey(j => j.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // UsageLog relationships
+            modelBuilder.Entity<UsageLog>()
+                .HasOne(ul => ul.User)
+                .WithMany()
+                .HasForeignKey(ul => ul.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UsageLog>()
+                .HasIndex(ul => new { ul.UserId, ul.CreatedAt })
+                .HasDatabaseName("idx_usage_user_created");
+
+            modelBuilder.Entity<UsageLog>()
+                .HasIndex(ul => ul.CreatedAt)
+                .HasDatabaseName("idx_usage_created");
+
+            // EventRating relationships
+            modelBuilder.Entity<EventRating>()
+                .HasOne(er => er.Event)
+                .WithMany()
+                .HasForeignKey(er => er.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<EventRating>()
+                .HasOne(er => er.User)
+                .WithMany()
+                .HasForeignKey(er => er.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
