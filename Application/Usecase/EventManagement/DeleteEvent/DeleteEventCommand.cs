@@ -2,5 +2,5 @@ using MediatR;
 
 namespace Application.Usecase.EventManagement.DeleteEvent
 {
-    public record DeleteEventCommand(Guid Id) : IRequest;
+    public record DeleteEventCommand(Guid Id) : IRequest<bool>;
 }

@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Application.Usecase.EventManagement.DeleteEvent
 {
-    public class DeleteEventHandler : IRequestHandler<DeleteEventCommand>
+    public class DeleteEventHandler : IRequestHandler<DeleteEventCommand, bool>
     {
         private readonly IEventRepository _eventRepository;
 
@@ -15,7 +15,7 @@ namespace Application.Usecase.EventManagement.DeleteEvent
             _eventRepository = eventRepository;
         }
 
-        public async Task Handle(DeleteEventCommand request, CancellationToken cancellationToken)
+        public async Task<bool> Handle(DeleteEventCommand request, CancellationToken cancellationToken)
         {
             var @event = await _eventRepository.GetByIdAsync(request.Id, cancellationToken);
             if (@event == null)
@@ -25,6 +25,8 @@ namespace Application.Usecase.EventManagement.DeleteEvent
 
             await _eventRepository.DeleteAsync(@event, cancellationToken);
             await _eventRepository.SaveChangesAsync(cancellationToken);
+            
+            return true;
         }
     }
 }
