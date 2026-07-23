@@ -82,12 +82,12 @@ namespace Infrastructure.Repository
         {
             var stats = await _db.FrameUsages
                 .Where(f => f.EventId == eventId)
-                .GroupBy(f => new { f.FrameId, f.Frame.FrameName })
+                .GroupBy(f => new { f.FrameId, FrameName = f.Frame != null ? f.Frame.FrameName : "Frame" })
                 .Select(g => new { g.Key.FrameId, g.Key.FrameName, Usage = g.Count() })
                 .OrderByDescending(x => x.Usage)
                 .ToListAsync(ct);
 
-            return stats.Select(x => (x.FrameId, x.FrameName, x.Usage)).ToList();
+            return stats.Select(x => (x.FrameId, x.FrameName ?? "Frame", x.Usage)).ToList();
         }
 
         public Task<int> GetActiveFrameCountAsync(Guid eventId, CancellationToken ct = default)
@@ -110,71 +110,110 @@ namespace Infrastructure.Repository
 
         public async Task<List<UserFanInsightDto>> GetFanInsightsAsync(Guid eventId, CancellationToken ct = default)
         {
-            // Lấy danh sách tất cả các User ID duy nhất đã tham gia hoặc tương tác với sự kiện
-            var participantIds = await _db.EventParticipants
-                .Where(ep => ep.EventId == eventId)
-                .Select(ep => ep.UserId)
-                .ToListAsync(ct);
-
-            var frameUserIds = await _db.FrameUsages
-                .Where(f => f.EventId == eventId)
-                .Select(f => f.UserId)
-                .ToListAsync(ct);
-
-            var messageUserIds = await _db.WishwallMessages
-                .Where(m => m.EventId == eventId)
-                .Select(m => m.UserId)
-                .ToListAsync(ct);
-
-            var allUserIds = participantIds
-                .Union(frameUserIds)
-                .Union(messageUserIds)
-                .Distinct()
-                .ToList();
-
-            var users = await _db.Users
-                .Where(u => allUserIds.Contains(u.Id))
-                .ToListAsync(ct);
-
-            Console.WriteLine($"[DEBUG] FanInsights for Event {eventId}: Found {allUserIds.Count} unique IDs, {users.Count} users in DB.");
-
-            var result = new List<UserFanInsightDto>();
-
-            foreach (var user in users)
+            try
             {
-                // Tính toán trực tiếp số lượng ảnh chụp (số lượt dùng frame) của user trong event này
-                var frameUsages = await _db.FrameUsages
-                    .Where(f => f.EventId == eventId && f.UserId == user.Id)
-                    .GroupBy(f => f.Frame.FrameName)
-                    .Select(g => new { Name = g.Key, Count = g.Count() })
+                // Lấy danh sách tất cả các User ID duy nhất đã tham gia hoặc tương tác với sự kiện
+                var participantIds = await _db.EventParticipants
+                    .Where(ep => ep.EventId == eventId)
+                    .Select(ep => ep.UserId)
                     .ToListAsync(ct);
 
-                var framesString = string.Join(", ", frameUsages.Select(f => $"{f.Name} ({f.Count})"));
-                var totalPhotos = frameUsages.Sum(f => f.Count);
+                var frameUserIds = await _db.FrameUsages
+                    .Where(f => f.EventId == eventId)
+                    .Select(f => f.UserId)
+                    .ToListAsync(ct);
 
-                // Tính toán số lượng tin nhắn Wishwall của user trong event này
-                var totalMessages = await _db.WishwallMessages
-                    .CountAsync(m => m.EventId == eventId && m.UserId == user.Id, ct);
+                var messageUserIds = await _db.WishwallMessages
+                    .Where(m => m.EventId == eventId)
+                    .Select(m => m.UserId)
+                    .ToListAsync(ct);
 
-                // Lấy điểm tương tác từ bảng Stats nếu có, nếu không tính đơn giản (Photos * 2 + Messages)
-                var stat = await _db.UserEventStats
-                    .FirstOrDefaultAsync(s => s.EventId == eventId && s.UserId == user.Id, ct);
-                
-                var engagementScore = stat?.EngagementScore ?? (totalPhotos * 2 + totalMessages);
-
-                result.Add(new UserFanInsightDto()
+                var allUserIds = participantIds
+                    .Union(frameUserIds)
+                    .Union(messageUserIds)
+                    .Distinct()
+                    .ToList();
+                    
+                if (!allUserIds.Any()) 
                 {
-                    UserId = user.Id,
-                    Name = _encryptionService.Decrypt(user.Name),
-                    Email = _encryptionService.DecryptDeterministic(user.Email),
-                    TotalPhotos = totalPhotos,
-                    TotalMessages = totalMessages,
-                    UsedFrames = framesString,
-                    EngagementScore = (float)engagementScore
-                });
-            }
+                    return new List<UserFanInsightDto>();
+                }
 
-            return result.OrderByDescending(r => r.EngagementScore).ToList();
+                var users = await _db.Users
+                    .Where(u => allUserIds.Contains(u.Id))
+                    .ToListAsync(ct);
+
+                Console.WriteLine($"[DEBUG] FanInsights for Event {eventId}: Found {allUserIds.Count} unique IDs, {users.Count} users in DB.");
+
+                // Lấy tất cả frame usages của event này gộp theo user và frame
+                var allFrameUsages = await _db.FrameUsages
+                    .Where(f => f.EventId == eventId)
+                    .Select(f => new { f.UserId, FrameName = f.Frame != null ? f.Frame.FrameName : "Frame" })
+                    .ToListAsync(ct);
+                
+                var userFrameUsages = allFrameUsages
+                    .GroupBy(f => f.UserId)
+                    .ToDictionary(
+                        g => g.Key, 
+                        g => g.GroupBy(x => x.FrameName ?? "Frame")
+                              .Select(x => new { Name = x.Key ?? "Frame", Count = x.Count() })
+                              .ToList()
+                    );
+
+                // Lấy tất cả messages count của event này gộp theo user
+                var allMessagesCount = await _db.WishwallMessages
+                    .Where(m => m.EventId == eventId)
+                    .GroupBy(m => m.UserId)
+                    .Select(g => new { UserId = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+
+                var rawStats = await _db.UserEventStats
+                    .Where(s => s.EventId == eventId)
+                    .Select(s => new { s.UserId, s.EngagementScore })
+                    .ToListAsync(ct);
+
+                var allStats = rawStats
+                    .GroupBy(s => s.UserId)
+                    .ToDictionary(g => g.Key, g => g.First().EngagementScore);
+
+                var result = new List<UserFanInsightDto>();
+
+                foreach (var user in users)
+                {
+                    var userFrames = userFrameUsages.ContainsKey(user.Id) ? userFrameUsages[user.Id] : new();
+                    var framesString = string.Join(", ", userFrames.Select(f => $"{f.Name} ({f.Count})"));
+                    var totalPhotos = userFrames.Sum(f => f.Count);
+
+                    var totalMessages = allMessagesCount.ContainsKey(user.Id) ? allMessagesCount[user.Id] : 0;
+                    
+                    var stat = allStats.ContainsKey(user.Id) ? (float?)allStats[user.Id] : null;
+                    var engagementScore = stat ?? (totalPhotos * 2 + totalMessages);
+
+                    string decryptedName = "Unknown";
+                    string decryptedEmail = "Unknown";
+
+                    try { if (!string.IsNullOrEmpty(user.Name)) decryptedName = _encryptionService.Decrypt(user.Name); } catch { }
+                    try { if (!string.IsNullOrEmpty(user.Email)) decryptedEmail = _encryptionService.DecryptDeterministic(user.Email); } catch { }
+
+                    result.Add(new UserFanInsightDto()
+                    {
+                        UserId = user.Id,
+                        Name = decryptedName,
+                        Email = decryptedEmail,
+                        TotalPhotos = totalPhotos,
+                        TotalMessages = totalMessages,
+                        UsedFrames = framesString,
+                        EngagementScore = (float)engagementScore
+                    });
+                }
+
+                return result.OrderByDescending(r => r.EngagementScore).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] GetFanInsightsAsync Exception: {ex.Message}\n{ex.StackTrace}");
+                throw;
+            }
         }
 
         public async Task<FanProfileDto?> GetFanProfileAsync(Guid eventId, Guid userId, CancellationToken ct = default)
@@ -193,7 +232,7 @@ namespace Infrastructure.Repository
             // Frame preferences
             var frameStats = await _db.FrameUsages
                 .Where(f => f.EventId == eventId && f.UserId == userId)
-                .GroupBy(f => new { f.FrameId, f.Frame.FrameName })
+                .GroupBy(f => new { f.FrameId, FrameName = f.Frame != null ? f.Frame.FrameName : "Frame" })
                 .Select(g => new { g.Key.FrameId, g.Key.FrameName, Count = g.Count() })
                 .ToListAsync(ct);
 
