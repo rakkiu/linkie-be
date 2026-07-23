@@ -43,6 +43,13 @@ namespace Application.Usecase.Admin.Report
         public List<KeywordStatDto> TopKeywords { get; set; } = new();
     }
 
+    public class RatingReportDto
+    {
+        public double AverageRating { get; set; }
+        public int TotalReviews { get; set; }
+        public Dictionary<int, int> Distribution { get; set; } = new();
+    }
+
     public class EventReportDto
     {
         public Guid EventId { get; set; }
@@ -56,6 +63,7 @@ namespace Application.Usecase.Admin.Report
 
         public FrameUsageReportDto FrameUsage { get; set; } = new();
         public WishwallReportDto Wishwall { get; set; } = new();
+        public RatingReportDto Rating { get; set; } = new();
         public List<HeatMapPointDto> HeatMap { get; set; } = new();
     }
 
@@ -73,11 +81,13 @@ namespace Application.Usecase.Admin.Report
 
         private readonly IAdminRepository _adminRepo;
         private readonly IEventRepository _eventRepo;
+        private readonly IEventRatingRepository _ratingRepo;
 
-        public GetEventReportHandler(IAdminRepository adminRepo, IEventRepository eventRepo)
+        public GetEventReportHandler(IAdminRepository adminRepo, IEventRepository eventRepo, IEventRatingRepository ratingRepo)
         {
             _adminRepo = adminRepo;
             _eventRepo = eventRepo;
+            _ratingRepo = ratingRepo;
         }
 
         public async Task<EventReportDto> Handle(GetEventReportQuery request, CancellationToken cancellationToken)
@@ -91,6 +101,16 @@ namespace Application.Usecase.Admin.Report
             var activeFrames = await _adminRepo.GetActiveFrameCountAsync(request.EventId, cancellationToken);
             var frameStats = await _adminRepo.GetFrameStatsAsync(request.EventId, cancellationToken);
             var messages = await _adminRepo.GetMessagesWithCreatedAtAsync(request.EventId, cancellationToken);
+
+            var ratings = await _ratingRepo.GetRatingsByEventIdAsync(request.EventId, cancellationToken);
+            var totalReviews = ratings.Count;
+            var averageRating = totalReviews > 0 ? Math.Round(ratings.Average(r => r.StarRating), 1) : 0;
+            var ratingDistribution = Enumerable.Range(1, 5).ToDictionary(x => x, x => 0);
+            foreach (var r in ratings)
+            {
+                if (ratingDistribution.ContainsKey(r.StarRating))
+                    ratingDistribution[r.StarRating]++;
+            }
 
             var positiveCount = messages.Count(m => m.Sentiment == Domain.Enums.WishwallSentiment.Positive);
             var negativeCount = messages.Count(m => m.Sentiment == Domain.Enums.WishwallSentiment.Negative);
@@ -147,6 +167,12 @@ namespace Application.Usecase.Admin.Report
                     PositiveRate = positiveRate,
                     NegativeRate = negativeRate,
                     TopKeywords = topKeywords
+                },
+                Rating = new RatingReportDto
+                {
+                    AverageRating = averageRating,
+                    TotalReviews = totalReviews,
+                    Distribution = ratingDistribution
                 },
                 HeatMap = heatMap
             };
